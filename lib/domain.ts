@@ -18,7 +18,7 @@ function event(v: unknown, state: AppState): LunchEvent {
   const groups = list(e.groups, 30, (v): RestaurantGroup => { const g = record(v), base = template(g), p = record(g.payment), leaderId = id(g.leaderId); if (!state.users.some(u => u.id === leaderId && u.role !== 'viewer')) fail('담당 리더를 선택해 주세요.'); if (g.mode !== 'attendance' && g.mode !== 'order') return fail('신청 방식을 확인해 주세요.'); const churchPaid = g.churchPaid === undefined ? false : bool(g.churchPaid); return { ...base, templateId: id(g.templateId), leaderId, mode: g.mode, churchPaid, payment: churchPaid ? { bank: '', account: '', holder: '' } : { bank: text(p.bank,50,true), account: text(p.account,100,true), holder: text(p.holder,100,true) } }; }); unique(groups);
   const published = bool(e.published), eventId = id(e.id);
   if (published && !groups.length && !state.registrations.some(r => r.eventId === eventId)) fail('공개하려면 식당을 한 곳 이상 추가해 주세요. "식당 불러오기"를 눌러 주세요.');
-  return { id: eventId, title: text(e.title), date, deadline: cutoff.toISOString(), published, groups };
+  return { id: eventId, title: text(e.title), date, deadline: cutoff.toISOString(), published, groups, archived: false };
 }
 export function applyCommand(state: AppState, actor: User, command: Command, now = new Date()): AppState {
   const next = structuredClone(state), user = next.users.find(u => u.id === actor.id);
@@ -70,7 +70,7 @@ export function applyCommand(state: AppState, actor: User, command: Command, now
     }
     default: fail('지원하지 않는 요청입니다.');
   }
-  next.audits.push({ id: `audit_${next.audits.length}_${now.getTime()}`, actorId: user.id, action: type, at, detail: JSON.stringify({ eventId: type === 'registration.save' || type === 'registration.cancel' ? input.eventId : undefined, userId: type === 'user.role' || type === 'registration.save' || type === 'registration.cancel' ? input.userId ?? user.id : undefined, registrationId: type === 'registration.paid' ? input.registrationId : undefined, staffOverride: closedOverride }) });
+  next.audits.push({ id: `audit_${now.getTime()}_${crypto.randomUUID().slice(0, 8)}`, actorId: user.id, action: type, at, detail: JSON.stringify({ eventId: type === 'registration.save' || type === 'registration.cancel' ? input.eventId : undefined, userId: type === 'user.role' || type === 'registration.save' || type === 'registration.cancel' ? input.userId ?? user.id : undefined, registrationId: type === 'registration.paid' ? input.registrationId : undefined, staffOverride: closedOverride }) });
   return next;
 }
 export function viewState(state: AppState, user: User | null): AppState {
@@ -81,16 +81,16 @@ export function viewState(state: AppState, user: User | null): AppState {
 
 export const KEEP_PAST_DAYS = 7;
 
-/** A meal is removed once its date is more than 7 days past AND every ordered signup has been marked paid. Attendance-only signups need no payment. */
-export function purgeExpired(state: AppState, now = new Date()): { state: AppState; removed: string[] } {
+/** True once every ordered signup of the meal is paid (church-supported and attendance-only need no payment). */
+export function settled(state: Pick<AppState, 'registrations'>, e: LunchEvent): boolean {
+  return state.registrations.filter(r => r.eventId === e.id).every(r => { const g = e.groups.find(g => g.id === r.groupId); return g?.mode !== 'order' || g.churchPaid || r.paid; });
+}
+/** Meals more than 7 days past their date whose orders are all settled move to the archive. Nothing is ever deleted. */
+export function archiveExpired(state: AppState, now = new Date()): { state: AppState; archived: string[] } {
   const today = new Date(now.getTime() + 9 * 3600000).toISOString().slice(0, 10);
   const limit = new Date(Date.parse(`${today}T00:00:00Z`) - KEEP_PAST_DAYS * 86400000).toISOString().slice(0, 10);
-  const settled = (e: LunchEvent) => state.registrations.filter(r => r.eventId === e.id).every(r => { const g = e.groups.find(g => g.id === r.groupId); return g?.mode !== 'order' || g.churchPaid || r.paid; });
-  const removed = state.events.filter(e => e.date < limit && settled(e)).map(e => e.id);
-  if (!removed.length) return { state, removed };
-  const next = structuredClone(state), gone = new Set(removed), at = now.toISOString();
-  next.events = next.events.filter(e => !gone.has(e.id));
-  next.registrations = next.registrations.filter(r => !gone.has(r.eventId));
-  for (const eventId of removed) next.audits.push({ id: `audit_purge_${eventId}`, actorId: 'system', action: 'event.purge', at, detail: JSON.stringify({ eventId }) });
-  return { state: next, removed };
+  const archived = state.events.filter(e => !e.archived && e.date < limit && settled(state, e)).map(e => e.id);
+  if (!archived.length) return { state, archived };
+  const moved = new Set(archived);
+  return { state: { ...state, events: state.events.filter(e => !moved.has(e.id)), registrations: state.registrations.filter(r => !moved.has(r.eventId)) }, archived };
 }

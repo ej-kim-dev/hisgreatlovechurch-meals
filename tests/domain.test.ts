@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyCommand, viewState, purgeExpired } from '../lib/domain.ts';
+import { applyCommand, viewState, archiveExpired } from '../lib/domain.ts';
 import { createDemoState } from '../lib/demo.ts';
 import type { AppState, Command } from '../lib/types.ts';
 const before = (s: AppState) => new Date(new Date(s.events[0].deadline).getTime()-1000);
@@ -30,19 +30,19 @@ test('several meals may share one date, each with its own registrations',()=>{co
 
 test('a meal with signups cannot be deleted, an empty one can, and only staff may delete',()=>{const s=createDemoState(),member=s.users[0],leader=s.users[1],ev=s.events[0],g=ev.groups[0];const signed=applyCommand(s,member,{type:'registration.save',eventId:ev.id,groupId:g.id,attendees:['김은종'],quantities:g.mode==='order'?{[g.menus[0].id]:1}:{}},new Date(0));assert.throws(()=>applyCommand(signed,leader,{type:'event.delete',eventId:ev.id}),/신청한 분이 1명/);assert.throws(()=>applyCommand(signed,member,{type:'event.delete',eventId:ev.id}),/리더/);const extra=structuredClone(ev);extra.id='extra';extra.groups=[];extra.published=false;const withExtra=applyCommand(signed,leader,{type:'event.save',event:extra});const removed=applyCommand(withExtra,leader,{type:'event.delete',eventId:'extra'});assert.equal(removed.events.some(x=>x.id==='extra'),false);assert.equal(removed.events.some(x=>x.id===ev.id),true);});
 
-test('old meals are removed 7+ days after the date, only once every order is paid',()=>{const s=createDemoState(),ev=s.events[0],g=ev.groups.find(x=>x.mode==='order')!;const eventDay=Date.parse(`${ev.date}T12:00:00+09:00`),day=86400000;
+test('meals move to the archive 7+ days after the date once every order is settled; stored data is untouched',()=>{const s=createDemoState(),ev=s.events[0],g=ev.groups.find(x=>x.mode==='order')!;const eventDay=Date.parse(`${ev.date}T12:00:00+09:00`),day=86400000;
 const signed=applyCommand(s,s.users[0],{type:'registration.save',eventId:ev.id,groupId:g.id,attendees:['김은종'],quantities:{[g.menus[0].id]:1}},new Date(0));
 // within 7 days: kept even if paid
 const paid=applyCommand(signed,s.users[1],{type:'registration.paid',registrationId:signed.registrations[0].id,paid:true},new Date(0));
-assert.deepEqual(purgeExpired(paid,new Date(eventDay+7*day)).removed,[]);
+assert.deepEqual(archiveExpired(paid,new Date(eventDay+7*day)).archived,[]);
 // 8+ days later but unpaid: kept
-assert.deepEqual(purgeExpired(signed,new Date(eventDay+9*day)).removed,[]);
+assert.deepEqual(archiveExpired(signed,new Date(eventDay+9*day)).archived,[]);
 // 8+ days later and paid: removed with its signups
-const out=purgeExpired(paid,new Date(eventDay+9*day));assert.deepEqual(out.removed,[ev.id]);assert.equal(out.state.events.some(e=>e.id===ev.id),false);assert.equal(out.state.registrations.some(r=>r.eventId===ev.id),false);
+const out=archiveExpired(paid,new Date(eventDay+9*day));assert.deepEqual(out.archived,[ev.id]);assert.equal(out.state.events.some(e=>e.id===ev.id),false);assert.equal(out.state.registrations.some(r=>r.eventId===ev.id),false);assert.equal(paid.registrations.some(r=>r.eventId===ev.id),true);assert.equal(archiveExpired({...paid,events:paid.events.map(e=>({...e,archived:true}))},new Date(eventDay+9*day)).archived.length,0);
 // no signups at all: removed after the week
-assert.deepEqual(purgeExpired(s,new Date(eventDay+9*day)).removed.includes(ev.id),true);
+assert.deepEqual(archiveExpired(s,new Date(eventDay+9*day)).archived.includes(ev.id),true);
 // upcoming meals are never removed
-assert.deepEqual(purgeExpired(paid,new Date(eventDay-2*day)).removed,[]);});
+assert.deepEqual(archiveExpired(paid,new Date(eventDay-2*day)).archived,[]);});
 
 test('staff can delete a saved restaurant without touching meals already made from it, members cannot',()=>{const s=createDemoState(),leader=s.users[1],member=s.users[0],tpl=s.templates[0];assert.throws(()=>applyCommand(s,member,{type:'template.delete',templateId:tpl.id}),/리더/);const n=applyCommand(s,leader,{type:'template.delete',templateId:tpl.id});assert.equal(n.templates.some(x=>x.id===tpl.id),false);assert.equal(n.events.length,s.events.length);assert.deepEqual(n.events[0].groups.map(g=>g.name),s.events[0].groups.map(g=>g.name));assert.throws(()=>applyCommand(n,leader,{type:'template.delete',templateId:tpl.id}),/찾을 수/);});
 
@@ -59,4 +59,6 @@ assert.equal(cg.churchPaid,true);assert.deepEqual(cg.payment,{bank:'',account:''
 const cgOrder=cg.mode==='order'?cg:saved.events.find(e=>e.id==='church')!.groups.find(x=>x.mode==='order')!;
 const reg=applyCommand(saved,member,{type:'registration.save',eventId:'church',groupId:cgOrder.id,attendees:['김은종'],quantities:{[cgOrder.menus[0].id]:1}},new Date(0));
 assert.throws(()=>applyCommand(reg,leader,{type:'registration.paid',registrationId:reg.registrations[0].id,paid:true},new Date(0)),/교회 지원/);
-assert.deepEqual(purgeExpired(reg,new Date(Date.parse('2027-01-20T00:00:00+09:00'))).removed.includes('church'),true);});
+assert.deepEqual(archiveExpired(reg,new Date(Date.parse('2027-01-20T00:00:00+09:00'))).archived.includes('church'),true);});
+
+test('saving a meal keeps it active (archived=false) and new audit ids are unique without loading history',()=>{const s=createDemoState(),e=structuredClone(s.events[0]);const n=applyCommand({...s,audits:[]},s.users[1],{type:'event.save',event:e});assert.equal(n.events.find(x=>x.id===e.id)?.archived,false);const m=applyCommand({...n,audits:[]},s.users[1],{type:'event.save',event:e});assert.notEqual(n.audits[0].id,m.audits[0].id);});
