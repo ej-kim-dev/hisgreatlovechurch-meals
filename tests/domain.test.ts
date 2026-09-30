@@ -45,3 +45,18 @@ assert.deepEqual(purgeExpired(s,new Date(eventDay+9*day)).removed.includes(ev.id
 assert.deepEqual(purgeExpired(paid,new Date(eventDay-2*day)).removed,[]);});
 
 test('staff can delete a saved restaurant without touching meals already made from it, members cannot',()=>{const s=createDemoState(),leader=s.users[1],member=s.users[0],tpl=s.templates[0];assert.throws(()=>applyCommand(s,member,{type:'template.delete',templateId:tpl.id}),/리더/);const n=applyCommand(s,leader,{type:'template.delete',templateId:tpl.id});assert.equal(n.templates.some(x=>x.id===tpl.id),false);assert.equal(n.events.length,s.events.length);assert.deepEqual(n.events[0].groups.map(g=>g.name),s.events[0].groups.map(g=>g.name));assert.throws(()=>applyCommand(n,leader,{type:'template.delete',templateId:tpl.id}),/찾을 수/);});
+
+test('paid signups cannot be cancelled, and church-supported meals carry no bank details or payment tracking',()=>{const s=createDemoState(),member=s.users[0],leader=s.users[1],ev=s.events[0],g=ev.groups.find(x=>x.mode==='order')!;
+const signed=applyCommand(s,member,{type:'registration.save',eventId:ev.id,groupId:g.id,attendees:['김은종'],quantities:{[g.menus[0].id]:1}},new Date(0));
+const paid=applyCommand(signed,leader,{type:'registration.paid',registrationId:signed.registrations[0].id,paid:true},new Date(0));
+assert.throws(()=>applyCommand(paid,member,{type:'registration.cancel',eventId:ev.id},new Date(0)),/입금이 확인된/);
+assert.throws(()=>applyCommand(paid,leader,{type:'registration.cancel',eventId:ev.id,userId:member.id},new Date(0)),/입금이 확인된/);
+const unpaid=applyCommand(paid,leader,{type:'registration.paid',registrationId:signed.registrations[0].id,paid:false},new Date(0));
+assert.equal(applyCommand(unpaid,member,{type:'registration.cancel',eventId:ev.id},new Date(0)).registrations.length,0);
+const church=structuredClone(ev);church.id='church';church.date='2027-01-03';church.deadline='2027-01-03T03:15:00.000Z';church.groups=church.groups.map((x,i)=>({...x,id:'c'+i,churchPaid:true,payment:{bank:'국민',account:'111',holder:'김'}}));
+const saved=applyCommand(s,leader,{type:'event.save',event:church});const cg=saved.events.find(e=>e.id==='church')!.groups[0];
+assert.equal(cg.churchPaid,true);assert.deepEqual(cg.payment,{bank:'',account:'',holder:''});
+const cgOrder=cg.mode==='order'?cg:saved.events.find(e=>e.id==='church')!.groups.find(x=>x.mode==='order')!;
+const reg=applyCommand(saved,member,{type:'registration.save',eventId:'church',groupId:cgOrder.id,attendees:['김은종'],quantities:{[cgOrder.menus[0].id]:1}},new Date(0));
+assert.throws(()=>applyCommand(reg,leader,{type:'registration.paid',registrationId:reg.registrations[0].id,paid:true},new Date(0)),/교회 지원/);
+assert.deepEqual(purgeExpired(reg,new Date(Date.parse('2027-01-20T00:00:00+09:00'))).removed.includes('church'),true);});

@@ -5,8 +5,11 @@ import { firebaseApp } from "./firebase";
 import { getUser } from "./store";
 import type { User } from "./types";
 
-export const SESSION_COOKIE = "sunday_session";
-export const STATE_COOKIE = "sunday_oauth_state";
+// Firebase Hosting forwards only a cookie named "__session" to Cloud Run, so the login state and the
+// session share it: before login it holds "oauth.<state>", after login the Firebase session cookie.
+export const SESSION_COOKIE = "__session";
+export const STATE_COOKIE = "__session";
+export const STATE_PREFIX = "oauth.";
 export const DEMO_COOKIE = "sunday_demo";
 export const SESSION_SECONDS = 5 * 24 * 60 * 60;
 const demoIds = ["demo-member", "demo-leader", "demo-admin"];
@@ -67,7 +70,7 @@ export async function currentUser(): Promise<User | null> {
   }
   if (!configured()) return null;
   const session = jar.get(SESSION_COOKIE)?.value;
-  if (!session) return null;
+  if (!session || session.startsWith(STATE_PREFIX)) return null;
   try {
     const token = await getAuth(firebaseApp()).verifySessionCookie(session, true);
     return await getUser(token.uid);

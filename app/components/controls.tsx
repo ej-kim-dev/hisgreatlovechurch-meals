@@ -25,7 +25,7 @@ export function SearchSelect({ options, value, onChange, label, placeholder = "�
   }
   return <div className="search-select" ref={root}>
     <button type="button" className={`select-trigger ${selected ? "" : "placeholder"}`} aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => { setOpen(!open); setCursor(0); }}>
-      <span>{selected?.label ?? placeholder}</span><span className="chevron" aria-hidden="true">⌄</span>
+      <span>{selected?.label ?? placeholder}</span><span className="chevron" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
     </button>
     {open && <div className="select-panel">
       <input ref={search} className="select-search" placeholder="검색" value={query} onKeyDown={keys} onChange={e => { setQuery(e.target.value); setCursor(0); }} aria-controls={listId} />
