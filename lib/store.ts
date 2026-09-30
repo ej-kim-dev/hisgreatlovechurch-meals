@@ -1,46 +1,72 @@
 import { firestore } from "./firebase";
 import { createDemoState } from "./demo";
-import { applyCommand, purgeExpired } from "./domain";
-import type { AppState, Command, User } from "./types";
+import { applyCommand, archiveExpired } from "./domain";
+import type { AppState, Command, LunchEvent, Registration, User } from "./types";
 
 const collectionNames = ["users", "templates", "events", "registrations", "audits"] as const;
+const LIMIT = 2000;
 const globalStore = globalThis as typeof globalThis & { sundayDemoState?: AppState };
-const emptyState = (): AppState => ({ users: [], templates: [], events: [], registrations: [], audits: [] });
 function demoMode() { return process.env.APP_MODE === "demo" && process.env.NODE_ENV !== "production" && !process.env.K_SERVICE; }
-function demoState(): AppState { return globalStore.sundayDemoState ??= createDemoState(); }
-function decode(results: Array<{ docs: Array<{ id: string; data: () => Record<string, unknown> }> }>): AppState {
-  const state = emptyState();
-  collectionNames.forEach((name, index) => { (state[name] as Array<unknown>) = results[index].docs.map(doc => ({ ...doc.data(), id: doc.id })); });
-  return state;
+function demoState(): AppState {
+  if (globalStore.sundayDemoState) return globalStore.sundayDemoState;
+  const state = createDemoState();
+  // A few finished meals so the local demo has something in 아카이브.
+  const base = state.events[0], order = base.groups.find(g => g.mode === "order")!;
+  [["2026-08-16", "주일 점심", false], ["2026-08-30", "수련회 저녁", true], ["2026-09-13", "주일 점심", false]].forEach(([date, title, church], i) => {
+    const id = `past-${i}`;
+    state.events.push({ ...structuredClone(base), id, title: title as string, date: date as string, deadline: `${date}T03:15:00.000Z`, archived: true, groups: [{ ...structuredClone(order), id: `${id}-g`, churchPaid: church as boolean }] });
+    state.registrations.push({ id: `${id}-r1`, eventId: id, userId: "demo-member", groupId: `${id}-g`, applicantName: "김은종", attendees: ["김은종", "김현아"], items: [{ menuId: order.menus[0].id, name: order.menus[0].name, price: order.menus[0].price, quantity: 2 }], paid: !church, updatedAt: `${date}T03:00:00.000Z` });
+  });
+  return globalStore.sundayDemoState = state;
 }
-async function removeExpired(db: FirebaseFirestore.Firestore, before: AppState, after: AppState, removed: string[]) {
-  const gone = new Set(removed);
-  const refs = [
-    ...removed.map(id => db.collection("events").doc(id)),
-    ...before.registrations.filter(r => gone.has(r.eventId)).map(r => db.collection("registrations").doc(r.id)),
-  ];
-  for (let i = 0; i < refs.length; i += 400) {
+const docs = <T>(snap: FirebaseFirestore.QuerySnapshot) => snap.docs.map(doc => ({ ...doc.data(), id: doc.id }) as T);
+function chunks<T>(items: T[], size: number): T[][] { const out: T[][] = []; for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size)); return out; }
+function activeOnly(state: AppState): AppState {
+  const live = state.events.filter(e => !e.archived), ids = new Set(live.map(e => e.id));
+  return { ...state, events: live, registrations: state.registrations.filter(r => ids.has(r.eventId)), audits: [] };
+}
+type Getter = (query: FirebaseFirestore.Query) => Promise<FirebaseFirestore.QuerySnapshot>;
+/** Loads only what the app works with day to day: people, restaurants, meals not yet archived and their signups. */
+async function loadActive(db: FirebaseFirestore.Firestore, get: Getter): Promise<AppState> {
+  const [users, templates, events] = await Promise.all([
+    get(db.collection("users").limit(LIMIT + 1)),
+    get(db.collection("templates").limit(LIMIT + 1)),
+    get(db.collection("events").where("archived", "==", false).limit(LIMIT + 1)),
+  ]);
+  if ([users, templates, events].some(snap => snap.size > LIMIT)) throw new Error("데이터가 너무 많습니다. 관리자에게 문의해 주세요.");
+  const registrations = (await Promise.all(chunks(events.docs.map(doc => doc.id), 30).map(ids => get(db.collection("registrations").where("eventId", "in", ids))))).flatMap(snap => docs<Registration>(snap));
+  return { users: docs<User>(users), templates: docs(templates), events: docs<LunchEvent>(events), registrations, audits: [] };
+}
+async function markArchived(db: FirebaseFirestore.Firestore, ids: string[]) {
+  for (const group of chunks(ids, 400)) {
     const batch = db.batch();
-    refs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+    group.forEach(id => batch.update(db.collection("events").doc(id), { archived: true }));
     await batch.commit();
   }
-  const trail = after.audits.filter(a => a.actorId === "system" && removed.some(id => a.id === `audit_purge_${id}`));
-  await Promise.all(trail.map(a => db.collection("audits").doc(a.id).set(a)));
 }
 export async function getState(): Promise<AppState> {
   if (demoMode()) {
-    const { state, removed } = purgeExpired(demoState());
-    if (removed.length) globalStore.sundayDemoState = state;
+    const { state, archived } = archiveExpired(activeOnly(demoState()));
+    archived.forEach(id => { const e = demoState().events.find(x => x.id === id); if (e) e.archived = true; });
     return structuredClone(state);
   }
   const db = firestore();
-  const snapshots = await Promise.all(collectionNames.map(name => db.collection(name).limit(2001).get()));
-  if (snapshots.some(snapshot => snapshot.size > 2000)) throw new Error("데이터가 너무 많습니다. 관리자에게 문의해 주세요.");
-  const loaded = decode(snapshots);
-  const { state, removed } = purgeExpired(loaded);
-  if (!removed.length) return loaded;
-  try { await removeExpired(db, loaded, state, removed); return state; }
-  catch (error) { console.error("Expired meal cleanup failed:", error instanceof Error ? error.message : "unknown"); return loaded; }
+  const { state, archived } = archiveExpired(await loadActive(db, query => query.get()));
+  if (archived.length) await markArchived(db, archived).catch(error => console.error("Archiving meals failed:", error instanceof Error ? error.message : "unknown"));
+  return state;
+}
+/** Archived meals whose date falls in [from, to], with their signups. Staff only (checked by the caller). */
+export async function getArchive(from: string, to: string): Promise<{ events: LunchEvent[]; registrations: Registration[] }> {
+  if (demoMode()) {
+    const events = demoState().events.filter(e => e.archived && e.date >= from && e.date <= to), ids = new Set(events.map(e => e.id));
+    return structuredClone({ events, registrations: demoState().registrations.filter(r => ids.has(r.eventId)) });
+  }
+  const db = firestore();
+  const snap = await db.collection("events").where("date", ">=", from).where("date", "<=", to).orderBy("date").limit(LIMIT + 1).get();
+  if (snap.size > LIMIT) throw new Error("기간을 줄여 주세요.");
+  const events = docs<LunchEvent>(snap).filter(e => e.archived === true);
+  const registrations = (await Promise.all(chunks(events.map(e => e.id), 30).map(ids => db.collection("registrations").where("eventId", "in", ids).get()))).flatMap(s => docs<Registration>(s));
+  return { events, registrations };
 }
 export async function getUser(id: string): Promise<User | null> {
   if (demoMode()) return demoState().users.find(user => user.id === id) ?? null;
@@ -71,23 +97,21 @@ export async function executeCommand(actor: User, command: Command): Promise<App
   if (demoMode()) {
     const updated = applyCommand(demoState(), actor, command);
     globalStore.sundayDemoState = updated;
-    return structuredClone(updated);
+    return structuredClone(activeOnly(updated));
   }
   const db = firestore();
   return db.runTransaction(async transaction => {
-    const refs = collectionNames.map(name => db.collection(name));
-    const previous = decode(await Promise.all(refs.map(ref => transaction.get(ref.limit(2001)))));
-    if (collectionNames.some(name => previous[name].length > 2000)) throw new Error("데이터가 너무 많습니다. 관리자에게 문의해 주세요.");
+    const previous = await loadActive(db, query => transaction.get(query));
     const next = applyCommand(previous, actor, command);
     for (const name of collectionNames) {
-      const before = new Map(previous[name].map(item => [item.id, item]));
-      const after = new Map(next[name].map(item => [item.id, item]));
+      const before = new Map((previous[name] as Array<{ id: string }>).map(item => [item.id, item]));
+      const after = new Map((next[name] as Array<{ id: string }>).map(item => [item.id, item]));
       for (const [id, item] of after) {
         const old = before.get(id);
         if (!old || JSON.stringify(old) !== JSON.stringify(item)) transaction.set(db.collection(name).doc(id), item);
       }
       for (const id of before.keys()) if (!after.has(id)) transaction.delete(db.collection(name).doc(id));
     }
-    return next;
+    return { ...next, audits: [] };
   });
 }

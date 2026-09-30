@@ -5,7 +5,7 @@ export interface Menu { id: string; name: string; price: number; photoUrl: strin
 export interface Bank { bank: string; account: string; holder: string; }
 export interface RestaurantTemplate { id: string; name: string; description: string; photoUrl: string; link?: string; menus: Menu[]; }
 export interface RestaurantGroup extends RestaurantTemplate { templateId: string; leaderId: string; mode: SignupMode; payment: Bank; churchPaid?: boolean; }
-export interface LunchEvent { id: string; title: string; date: string; deadline: string; published: boolean; groups: RestaurantGroup[]; }
+export interface LunchEvent { id: string; title: string; date: string; deadline: string; published: boolean; groups: RestaurantGroup[]; archived?: boolean; }
 export interface OrderItem { menuId: string; name: string; price: number; quantity: number; }
 export interface Registration { id: string; eventId: string; userId: string; groupId: string; applicantName: string; attendees: string[]; items: OrderItem[]; paid: boolean; updatedAt: string; }
 export interface Audit { id: string; actorId: string; action: string; at: string; detail: string; }

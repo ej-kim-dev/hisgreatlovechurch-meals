@@ -247,4 +247,30 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
 @media(max-width:700px){.stepper button{width:40px;height:40px;font-size:20px}.stepper output{width:34px;font-size:15px}}
 .section-heading.actions-only{justify-content:flex-end;margin-top:0}
 .role-list .user-row:first-child{border-top:0;margin-top:0;padding-top:4px}
-/* v27b */
+/* 관리 > 아카이브 */
+.archive-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.archive-summary{display:flex;flex-wrap:wrap;gap:10px 22px;background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:14px;color:var(--muted)}
+.archive-summary strong{color:var(--ink);font-size:16px;margin-left:6px}
+.archive-list{border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:hidden}
+.archive-head,.archive-row>summary{display:grid;grid-template-columns:96px minmax(0,1fr) 70px 110px 92px;gap:12px;align-items:center;padding:12px 18px}
+.archive-head{font-size:12px;font-weight:650;color:var(--muted);background:var(--tint);border-bottom:1px solid var(--line)}
+.archive-row+.archive-row{border-top:1px solid var(--line)}.archive-row>summary{cursor:pointer;list-style:none;font-size:14px}.archive-row>summary::-webkit-details-marker{display:none}.archive-row>summary:hover{background:var(--tint)}
+.a-name{display:flex;flex-direction:column;min-width:0}.a-name small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.a-pay{font-size:12px;font-weight:650;text-align:center;border-radius:8px;padding:4px 6px;background:var(--ok-tint);color:var(--ok);white-space:nowrap}.a-pay.church{background:var(--tint);color:var(--ink)}
+.archive-detail{list-style:none;margin:0;padding:4px 18px 14px 126px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.archive .empty-state{padding:40px 20px}.archive>.caption{padding:16px}
+@media(max-width:700px){
+.archive-filters{grid-template-columns:1fr 1fr}.archive-filters label:last-child{grid-column:1 / -1}
+.archive-head{display:none}
+.archive-row>summary{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name pay" "date num" "date total";row-gap:4px;padding:14px 16px}
+.a-name{grid-area:name}.a-pay{grid-area:pay}.a-date{grid-area:date;color:var(--muted);font-size:13px;align-self:start}.archive-row>summary>.a-num:nth-of-type(3){grid-area:num}.archive-row>summary>.a-num:nth-of-type(4){grid-area:total;font-weight:700}
+.archive-detail{padding:0 16px 14px}
+}
+/* every × is the same square: light red, red cross, thin border */
+.card-x.icon-action.danger{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;padding:0;border:1px solid #efd0c8;background:var(--bad-tint);color:var(--bad);box-shadow:none;filter:none}
+.card-x.icon-action.danger:hover:not(:disabled){background:#f6ddd7}
+.modal-header .icon-action{flex:0 0 auto}
+/* name rows: number | name | × */
+.attendee-row label span.attendee-no{min-width:22px;width:22px;text-align:center;font-size:15px;font-weight:700;color:var(--muted)}
+.attendee-row .icon-action{flex:0 0 auto}
+/* v29b */
