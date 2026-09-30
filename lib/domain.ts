@@ -15,7 +15,7 @@ function event(v: unknown, state: AppState): LunchEvent {
   const e = record(v), date = text(e.date, 10), deadline = text(e.deadline, 40), day = new Date(`${date}T00:00:00Z`), cutoff = new Date(deadline);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(day.getTime()) || day.toISOString().slice(0,10) !== date) fail('올바른 날짜를 선택해 주세요.');
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(deadline) || !Number.isFinite(cutoff.getTime()) || new Date(cutoff.getTime() + 9*3600000).toISOString().slice(0,10) > date) fail('마감 시간은 모임 날짜 이전(한국 시간)으로 설정해 주세요.');
-  const groups = list(e.groups, 30, (v): RestaurantGroup => { const g = record(v), base = template(g), p = record(g.payment), leaderId = id(g.leaderId); if (!state.users.some(u => u.id === leaderId && u.role !== 'viewer')) fail('담당 리더를 선택해 주세요.'); if (g.mode !== 'attendance' && g.mode !== 'order') return fail('신청 방식을 확인해 주세요.'); return { ...base, templateId: id(g.templateId), leaderId, mode: g.mode, payment: { bank: text(p.bank,50,true), account: text(p.account,100,true), holder: text(p.holder,100,true) } }; }); unique(groups);
+  const groups = list(e.groups, 30, (v): RestaurantGroup => { const g = record(v), base = template(g), p = record(g.payment), leaderId = id(g.leaderId); if (!state.users.some(u => u.id === leaderId && u.role !== 'viewer')) fail('담당 리더를 선택해 주세요.'); if (g.mode !== 'attendance' && g.mode !== 'order') return fail('신청 방식을 확인해 주세요.'); const churchPaid = g.churchPaid === undefined ? false : bool(g.churchPaid); return { ...base, templateId: id(g.templateId), leaderId, mode: g.mode, churchPaid, payment: churchPaid ? { bank: '', account: '', holder: '' } : { bank: text(p.bank,50,true), account: text(p.account,100,true), holder: text(p.holder,100,true) } }; }); unique(groups);
   const published = bool(e.published), eventId = id(e.id);
   if (published && !groups.length && !state.registrations.some(r => r.eventId === eventId)) fail('공개하려면 식당을 한 곳 이상 추가해 주세요. "식당 불러오기"를 눌러 주세요.');
   return { id: eventId, title: text(e.title), date, deadline: cutoff.toISOString(), published, groups };
@@ -51,7 +51,7 @@ export function applyCommand(state: AppState, actor: User, command: Command, now
       if (!lunch || (!staff && !lunch.published)) return fail('모임을 찾을 수 없습니다.');
       const closed = now.getTime() >= new Date(lunch.deadline).getTime(); if (!staff && closed) fail('신청이 마감되었습니다. 리더에게 문의해 주세요.'); closedOverride = staff && closed;
       const previous = next.registrations.find(r => r.eventId === eventId && r.userId === userId);
-      if (type === 'registration.cancel') { next.registrations = next.registrations.filter(r => !(r.eventId === eventId && r.userId === userId)); break; }
+      if (type === 'registration.cancel') { if (previous?.paid) fail('입금이 확인된 신청은 취소할 수 없습니다. 입금 확인을 먼저 해제해 주세요.'); next.registrations = next.registrations.filter(r => !(r.eventId === eventId && r.userId === userId)); break; }
       const groupId = id(input.groupId), group = lunch.groups.find(g => g.id === groupId); if (!group) return fail('식당을 찾을 수 없습니다.');
       const attendees = list(input.attendees,30,v => text(v,50)); if (!attendees.length) fail('참석자를 한 명 이상 입력해 주세요.');
       const quantities = record(input.quantities); if (Object.keys(quantities).length > 100) fail('메뉴가 너무 많습니다.');
@@ -61,7 +61,7 @@ export function applyCommand(state: AppState, actor: User, command: Command, now
       next.registrations = next.registrations.filter(r => !(r.eventId === eventId && r.userId === userId));
       next.registrations.push({ id: previous?.id ?? `reg_${eventId.length}_${eventId}_${userId}`, eventId, userId, groupId, applicantName: owner.name, attendees, items, paid: Boolean(unchanged && previous?.paid), updatedAt: at }); break;
     }
-    case 'registration.paid': { requireStaff(); const registrationId = id(input.registrationId), paid = bool(input.paid), r = next.registrations.find(r => r.id === registrationId); if (!r) return fail('신청을 찾을 수 없습니다.'); r.paid = paid; r.updatedAt = at; break; }
+    case 'registration.paid': { requireStaff(); const registrationId = id(input.registrationId), paid = bool(input.paid), r = next.registrations.find(r => r.id === registrationId); if (!r) return fail('신청을 찾을 수 없습니다.'); if (next.events.find(e => e.id === r.eventId)?.groups.find(g => g.id === r.groupId)?.churchPaid) fail('교회 지원 식사는 입금 확인이 필요 없습니다.'); r.paid = paid; r.updatedAt = at; break; }
     case 'user.role': {
       if (user.role !== 'admin') fail('관리자 권한이 필요합니다.'); const userId = id(input.userId), role = input.role;
       if (role !== 'viewer' && role !== 'editor' && role !== 'admin') return fail('권한을 확인해 주세요.'); const target = next.users.find(u => u.id === userId); if (!target) return fail('사용자를 찾을 수 없습니다.');
@@ -85,7 +85,7 @@ export const KEEP_PAST_DAYS = 7;
 export function purgeExpired(state: AppState, now = new Date()): { state: AppState; removed: string[] } {
   const today = new Date(now.getTime() + 9 * 3600000).toISOString().slice(0, 10);
   const limit = new Date(Date.parse(`${today}T00:00:00Z`) - KEEP_PAST_DAYS * 86400000).toISOString().slice(0, 10);
-  const settled = (e: LunchEvent) => state.registrations.filter(r => r.eventId === e.id).every(r => e.groups.find(g => g.id === r.groupId)?.mode !== 'order' || r.paid);
+  const settled = (e: LunchEvent) => state.registrations.filter(r => r.eventId === e.id).every(r => { const g = e.groups.find(g => g.id === r.groupId); return g?.mode !== 'order' || g.churchPaid || r.paid; });
   const removed = state.events.filter(e => e.date < limit && settled(e)).map(e => e.id);
   if (!removed.length) return { state, removed };
   const next = structuredClone(state), gone = new Set(removed), at = now.toISOString();

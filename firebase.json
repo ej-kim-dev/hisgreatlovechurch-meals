@@ -2,5 +2,22 @@
   "firestore": {
     "database": "(default)",
     "rules": "firestore.rules"
+  },
+  "hosting": {
+    "site": "hisgreatlovechurch-meals",
+    "public": "hosting",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "meals",
+          "region": "asia-northeast3"
+        }
+      }
+    ]
   }
 }

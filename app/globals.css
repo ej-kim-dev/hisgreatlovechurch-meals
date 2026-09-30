@@ -57,7 +57,7 @@
 .group-report{padding:0;overflow:hidden}.group-report>summary{list-style:none}.group-report>summary::-webkit-details-marker{display:none}
 .report-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;cursor:pointer}.report-bar:hover{background:var(--tint)}
 .report-bar .eyebrow{margin-bottom:4px}.report-bar h3{margin:0}.report-bar .badge{margin-left:auto}
-.chevron{font-size:20px;line-height:1;color:var(--muted);transition:transform .2s}.group-report[open] .chevron{transform:rotate(180deg)}
+.chevron{font-size:20px;line-height:1;color:var(--muted);transition:transform .2s}.group-report[open]>.report-bar .chevron{transform:rotate(180deg)}
 .group-report[open]>.report-bar{border-bottom:1px solid var(--line)}
 .report-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:28px;padding:22px 24px 26px;align-items:start}
 .report-list h4,.order-sheet h4{font-size:14px;margin-bottom:6px;color:var(--muted);font-weight:650}
@@ -191,4 +191,58 @@ input:focus-visible,select:focus-visible,.select-trigger:focus-visible{outline:2
 .summary-actions{display:flex;gap:8px}.order-summary .summary-name{margin:0 0 6px}
 .ordered-lines{display:flex;flex-direction:column;gap:2px}
 .template-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
-/* v18b */
+/* 교회 지원 */
+.payment-box.church-paid{background:var(--tint);border-color:var(--line)}.payment-box.church-paid h3{margin:0;font-size:18px}
+.church-tag{font-size:14px;font-weight:700;color:var(--ink);background:var(--tint);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+/* 입금 tick: a slight grey, lighter once paid */
+.pay-check.off{background:#e3e1dd;border-color:#d0cdc8;color:var(--ink)}.pay-check.off .check-box{border-color:#8f8c87;background:#fff}
+.pay-check.on{background:var(--paper);border-color:var(--line);color:var(--muted)}.pay-check.on .check-box{background:#efeeec;border-color:#c9c6c1;color:var(--ink)}
+/* delete × sits top right, solid so it reads over any photo */
+.card-x{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;padding:0;border:0;border-radius:10px;background:var(--bad);color:#fff;display:grid;place-items:center;box-shadow:0 2px 8px #0005}
+.card-x:hover:not(:disabled){filter:brightness(.92)}
+@media(max-width:700px){.event-row{flex-direction:row;align-items:flex-start}.event-row .icon-action{margin-left:auto;flex:0 0 auto}}
+/* phone: the signup sheet floats as a card with margins instead of touching the screen edges */
+@media(max-width:700px){.modal-backdrop{padding:16px;align-items:center}.signup-modal{border-radius:18px;max-height:calc(100dvh - 32px)}.modal-header{padding:18px 20px}}
+/* phone bottom nav: sits at the bottom of the page (above any in-app toolbar), equal-width tabs */
+@media(max-width:700px){
+.mobile-nav{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;justify-content:stretch;padding:8px 14px calc(10px + env(safe-area-inset-bottom))}
+.mobile-nav button{width:100%;padding:15px 6px;font-size:15px;border-radius:12px;text-align:center;white-space:nowrap}
+.mobile-nav button.active{font-weight:700;background:var(--tint);color:var(--ink)}
+.order-lines>div{gap:16px;align-items:baseline}.order-lines>div>span:first-child{min-width:0;overflow-wrap:anywhere}.order-lines>div>span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.total-line{gap:16px}
+}
+/* name rows: 이름 1 | 홍길동 | X on one line */
+.attendee-row{align-items:center}.attendee-row label{flex-direction:row;align-items:center;gap:12px}
+.attendee-row label span{min-width:50px;white-space:nowrap;font-size:14px}.attendee-row label input{flex:1;min-width:0}
+.attendee-row .icon-button{margin-bottom:0}
+/* iPhone Safari gives date/time inputs a native minimum width that pushes past the container */
+input[type=date],input[type=datetime-local],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;line-height:var(--field-h)}
+input::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::-webkit-calendar-picker-indicator{margin:0}
+/* 관리 > 식사: collapsible meal bars */
+.meal-bar .report-bar{gap:12px}.meal-bar-text{flex:1;min-width:0}.meal-bar-text h3{margin:0 0 2px;font-size:18px}.meal-bar-text .caption{margin:0}
+.meal-bar .report-bar .badge{margin-left:0}
+.meal-bar-body{padding:0 24px 24px}.meal-bar-body .editor-form{border:0;padding:0;margin:0;background:none}
+/* 마이 페이지: card uses the full width */
+.order-summary{width:100%;max-width:none;margin:0}
+@media(max-width:700px){.meal-bar .report-bar{flex-wrap:wrap;padding:14px 16px}.meal-bar-text{flex-basis:calc(100% - 110px)}.meal-bar-body{padding:0 16px 18px}}
+.form-actions{flex-wrap:wrap}
+@media(max-width:700px){.group-editor-body .form-actions .secondary{flex:1 1 100%}}
+.meal-bar .report-bar{flex-wrap:nowrap;align-items:center}.meal-bar-text h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.meal-bar-text h3 .badge{font-size:11px}
+.meal-bar .report-bar>.icon-action{flex:0 0 auto;align-self:center}
+@media(max-width:700px){.meal-bar-text{flex-basis:auto}}
+.chevron{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:0 0 auto;font-size:0;color:var(--muted);transition:transform .2s}
+.group-title .chevron{transform:rotate(-90deg)}.group-editor[open]>summary .group-title .chevron{transform:none}
+.meal-bar[open]>.report-bar .chevron,.group-report[open]>.report-bar .chevron{transform:rotate(180deg)}
+.meal-bar-body{padding-top:20px}
+@media(max-width:700px){
+.manage-restaurants{gap:12px}.manage-restaurants .restaurant-card{position:relative;display:grid;grid-template-columns:96px minmax(0,1fr);align-items:stretch}
+.manage-restaurants .card-photo{position:static;height:auto;min-height:104px}.manage-restaurants .card-photo>img{height:100%}
+.manage-restaurants .restaurant-art{padding:6px 6px 0}.manage-restaurants .restaurant-info{padding:14px 56px 14px 14px}
+.manage-restaurants .restaurant-info h3{font-size:17px}.manage-restaurants .restaurant-title{flex-wrap:wrap;gap:6px}
+.manage-restaurants .restaurant-description{font-size:12px;margin:4px 0}.manage-restaurants .caption{margin:0;font-size:12px}
+.manage-restaurants .card-x{top:10px;right:10px;width:34px;height:34px;box-shadow:none}
+.template-search{max-width:none}
+}
+@media(max-width:700px){.stepper button{width:40px;height:40px;font-size:20px}.stepper output{width:34px;font-size:15px}}
+/* v26b */

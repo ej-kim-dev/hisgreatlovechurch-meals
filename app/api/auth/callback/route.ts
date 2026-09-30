@@ -1,15 +1,15 @@
 import { cookies } from "next/headers";
 import { getAuth } from "firebase-admin/auth";
 import { NextResponse } from "next/server";
-import { appOrigin, configured, cookieOptions, secureEqual, SESSION_COOKIE, SESSION_SECONDS, STATE_COOKIE } from "@/lib/auth";
+import { appOrigin, configured, cookieOptions, secureEqual, SESSION_COOKIE, SESSION_SECONDS, STATE_COOKIE, STATE_PREFIX } from "@/lib/auth";
 import { firebaseApp } from "@/lib/firebase";
 import { upsertKakaoUser } from "@/lib/store";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const jar = await cookies();
-  const expected = jar.get(STATE_COOKIE)?.value || "";
-  jar.set(STATE_COOKIE, "", cookieOptions(0));
+  const stored = jar.get(STATE_COOKIE)?.value || "";
+  const expected = stored.startsWith(STATE_PREFIX) ? stored.slice(STATE_PREFIX.length) : "";
   if (!configured()) return NextResponse.json({ error: "로그인 설정이 완료되지 않았습니다." }, { status: 503 });
   const origin = appOrigin();
   try {
@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     const destination = new URL("/", origin);
     destination.searchParams.set("error", "로그인에 실패했습니다. 다시 시도해 주세요.");
     const response = NextResponse.redirect(destination);
+    response.cookies.set(STATE_COOKIE, "", cookieOptions(0));
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("Referrer-Policy", "no-referrer");
     return response;
