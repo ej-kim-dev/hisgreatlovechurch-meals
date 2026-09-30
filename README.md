@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sunday Lunch · 그 사랑교회
 
-## Getting Started
+A Korean Next.js website for Sunday restaurant signups. Members sign in with Kakao, choose one restaurant per Sunday, list everyone attending, and optionally order multiple menu items. Leaders prepare weekly restaurants and correct registrations; admins manage roles. Bank transfer is handled outside the site.
 
-First, run the development server:
+## Local preview
+
+Requires Node.js 22 or newer. The local preview uses fictional people, restaurants, and bank details; it does not access the church database.
 
 ```bash
+npm ci
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. The preview bar switches between 교인, 리더, 관리자. Preview data resets when the development server restarts. Never use demo mode for real signup data. Cloud Run and production builds reject demo login even if `APP_MODE=demo` is accidentally set.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app uses native Node tests for authorization, cutoff, data validation, and order preservation. See [requirements](docs/requirements.md) for the agreed behavior and [deployment guide](docs/deploy.md) for live setup.
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/page.tsx`, `app/components/`: Korean member and staff interface.
+- `app/api/`: authenticated Next.js server endpoints, Kakao callback, photo upload.
+- `lib/domain.ts`: validated commands and role checks; `lib/store.ts`: Firestore persistence.
+- `lib/auth.ts`: Kakao to Firebase session flow.
+- `firestore.rules`: deny all direct client Firestore access. Only the server uses the Admin SDK.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Security and privacy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Kakao's app-scoped user ID is linked to an internal account. Email and phone number are not requested. Member writes are checked on the server; editing someone else's order or roles is rejected. All browser writes require a matching `Origin`. Photos are available only to signed-in users. Restaurant/menu changes preserve the names and prices already submitted. Administrator access is bootstrapped with one known Kakao ID via server configuration.

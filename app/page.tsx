@@ -1,65 +1,37 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import type { AppSnapshot, Command, RestaurantGroup, Registration, LunchEvent, User } from "@/lib/types";
+import { Icon, RestaurantArt, Photo, request, roleName } from "./components/shared";
+import { Management } from "./components/management";
+import { Signup, OrderSummary } from "./components/signup";
+import { DateStrip, cutoffLabel, summarizeDates, todayInSeoul } from "./components/dates";
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+ const [state,setState]=useState<AppSnapshot|null>(null),[error,setError]=useState(""),[pending,setPending]=useState(false),[tab,setTab]=useState("week"),[date,setDate]=useState(""),[now,setNow]=useState(0),[name,setName]=useState("");
+ const [editing,setEditing]=useState<{event:LunchEvent;group:RestaurantGroup;user:User;registration?:Registration}|null>(null);
+ useEffect(()=>{let active=true;request<AppSnapshot>("/api/state").then(s=>{if(active)setState(s)}).catch(e=>{if(active)setError(e.message)});const tick=()=>setNow(Date.now());tick();const interval=setInterval(tick,15000);if(new URLSearchParams(location.search).has("error"))setError("카카오 로그인을 완료하지 못했어요. 다시 시도해 주세요.");return()=>{active=false;clearInterval(interval)}},[]);
+ async function run(command:Command){setPending(true);setError("");try{setState(await request<AppSnapshot>("/api/command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)}));return true}catch(e){setError(e instanceof Error?e.message:"저장 실패");return false}finally{setPending(false)}}
+ async function session(url:string,userId?:string){setPending(true);setError("");try{await request(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(userId?{userId}:{})});setState(await request<AppSnapshot>("/api/state"));setEditing(null);setTab("week")}catch(e){setError(e instanceof Error?e.message:"요청 실패")}finally{setPending(false)}}
+ const staff=!!state?.user&&state.user.role!=="viewer";
+ const visible=state?.events.filter(e=>staff||e.published)??[];
+ const listed=tab==="manage"?visible:visible.filter(e=>e.date>=todayInSeoul(now||Date.now()));
+ const dateChips=summarizeDates(listed,now||Date.now());
+ const selectedDate=dateChips.find(d=>d.date===date)?.date??dateChips.find(d=>d.status==="open")?.date??dateChips.find(d=>d.date>=todayInSeoul(now||Date.now()))?.date??dateChips[dateChips.length-1]?.date;
+ const dayEvents=listed.filter(e=>e.date===selectedDate).sort((x,y)=>x.deadline.localeCompare(y.deadline));
+ function mineFor(ev:LunchEvent){return state?.registrations.find(r=>r.eventId===ev.id&&r.userId===state.user?.id)}
+ function open(ev:LunchEvent,group:RestaurantGroup,user=state?.user,registration=mineFor(ev)){if(!user)return;if(registration&&registration.groupId!==group.id&&!confirm("식당을 변경하면 기존 메뉴 선택이 초기화됩니다. 변경할까요? 저장 전에는 기존 신청이 유지됩니다."))return;setError("");setEditing({event:ev,group,user,registration})}
+ const nav=<>{[["week","신청"],["mine","마이 페이지"],...(staff?[["manage","관리"]]:[])].map(([value,label])=><button key={value} className={tab===value?"active":""} onClick={()=>{setTab(value);setEditing(null)}}>{label}</button>)}</>;
+ return <>{state?.demo&&<div className="demo-bar"><span><strong>체험 모드</strong> 가상 데이터입니다. 실제 신청이 아니에요.</span><div>{[["demo-member","교인"],["demo-leader","리더"],["demo-admin","관리자"]].map(([id,label])=><button key={id} disabled={pending} aria-pressed={state.user?.id===id} onClick={()=>session("/api/demo",id)}>{label} 체험</button>)}</div></div>}<header className="site-header"><Link className="brand" href="/"><Image className="brand-logo" src="/logo.jpg" alt="그 사랑교회" width={880} height={270} priority/><span className="brand-word">Meals</span></Link>{state?.user&&<><nav className="desktop-nav" aria-label="주 메뉴">{nav}</nav><div className="account"><span className="account-pill"><strong>{state.user.name||"새 교인"}</strong><small>{roleName[state.user.role]}</small></span><button className="logout-pill" disabled={pending} onClick={()=>session("/api/auth/logout")}>로그아웃</button></div></>}</header>
+ <main className="main-shell">{error&&<div className="notice error-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="오류 닫기">×</button></div>}
+ {!state?error?<div className="empty-state"><Icon name="leaf" size={40}/><h1>잠시 연결이 어려워요</h1><button className="primary" onClick={()=>location.reload()}>다시 불러오기</button></div>:<div className="loading-brand">His Great Love Church Meals</div>:!state.user?<section className="welcome"><div className="welcome-copy"><h1 className="login-title">His Great Love Church Meals</h1><p className="login-sub">그 사랑교회 식사 앱</p>{state.configured?<a className="kakao-button" href="/api/auth/kakao"><span className="chat-bubble"/>카카오로 시작하기<Icon name="arrow"/></a>:<><button className="kakao-button" disabled><span className="chat-bubble"/>카카오로 시작하기</button><p className="setup-hint">카카오 로그인을 준비하고 있어요.{state.demo?" 위의 교인 체험으로 둘러보세요.":" 담당자에게 문의해 주세요."}</p></>}</div><div className="welcome-art"><Image className="login-art" src="/login-art.webp" alt="" width={1349} height={1165} priority/></div></section>:!state.user.name.trim()?<form className="profile-card panel" onSubmit={async e=>{e.preventDefault();await run({type:"profile",name:name.trim()})}}><span className="eyebrow">반가워요!</span><h1>어떻게 불러드릴까요?</h1><p>교회에서 사용하는 이름을 적어 주세요.</p><label>이름<input required maxLength={40} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></label><button className="primary" disabled={pending||!name.trim()}>시작하기</button></form>:<>
+ 
+ {tab!=="manage"&&dateChips.length>0&&<DateStrip dates={dateChips} selected={selectedDate} onSelect={d=>{setDate(d);setEditing(null)}}/>}
+ {staff&&<div hidden={tab!=="manage"}><Management state={state} events={dayEvents} dates={dateChips} selectedDate={selectedDate} selectDate={d=>{setDate(d);setEditing(null)}} run={run} pending={pending} onEditRegistration={r=>{const ev=dayEvents.find(e=>e.id===r.eventId),g=ev?.groups.find(g=>g.id===r.groupId),u=state.users.find(u=>u.id===r.userId);if(ev&&g&&u)open(ev,g,u,r)}}/></div>}{tab==="manage"?null:dayEvents.length===0?<div className="empty-state"><Icon name="calendar" size={40}/><h2>다음 식사를 준비하고 있어요</h2><p>리더가 식당을 열면 여기에서 신청할 수 있어요.</p></div>:tab==="mine"?(()=>{const list=dayEvents.map(ev=>({ev,r:mineFor(ev)})).filter((x):x is {ev:LunchEvent;r:Registration}=>!!x.r);return list.length?<div className="stack">{list.map(({ev,r})=><OrderSummary key={ev.id} registration={r} event={ev} canEdit={now<Date.parse(ev.deadline)||staff} pending={pending} onEdit={()=>{const g=ev.groups.find(g=>g.id===r.groupId);if(g)open(ev,g)}} onCancel={()=>{if(confirm("식사 신청을 취소할까요?"))void run({type:"registration.cancel",eventId:ev.id})}}/>)}</div>:<div className="empty-state"><Icon name="bowl" size={40}/><h2>아직 신청한 내역이 없어요</h2><button className="primary" onClick={()=>setTab("week")}>신청하기 <Icon name="arrow"/></button></div>})():<>
+ {dayEvents.map(ev=>{const closed=now>=Date.parse(ev.deadline),mine=mineFor(ev);return <div className="meal-block" key={ev.id}>
+ <section className={`week-banner ${closed?"is-closed":"is-open"}`}><div className="banner-row"><span className={`badge ${closed?"closed-badge":"open-badge"}`}><span className="status-dot"/>{closed?"신청 마감":"신청 하기"}</span><span className="banner-cutoff">마감: {cutoffLabel(ev.deadline)}</span></div><h2>{ev.title}</h2></section>
+ <div className="section-heading"><h2>식당 <span>{ev.groups.length}</span></h2></div><div className="restaurant-grid">{ev.groups.map((g,i)=><article className="restaurant-card" key={g.id}><div className="card-photo">{g.photoUrl?<Photo src={g.photoUrl} alt={g.name}/>:<RestaurantArt index={i} name={g.name}/>}<span className="image-badge">{g.mode==="attendance"?"참석만 신청":"참석 + 메뉴 주문"}</span></div><div className="restaurant-info"><div className="restaurant-title"><h3>{g.name}</h3>{g.link&&<a className="store-link" href={g.link} target="_blank" rel="noopener noreferrer">가게 보기 ↗</a>}</div><p className="restaurant-description">{g.description||"맛있는 식사와 반가운 이야기가 기다리고 있어요."}</p><div className="leader-line"><Icon name="people" size={17}/><span>리더: <strong>{state.users.find(u=>u.id===g.leaderId)?.name||"담당 리더"}</strong></span></div><div className="card-footer">{mine?.groupId===g.id?<span className="ordered-mark"><Icon name="check" size={15}/><span className="ordered-lines">{mine.items.length?mine.items.map(i=><span key={i.menuId}>{i.name} × {i.quantity}</span>):<span>참석</span>}</span></span>:<span>{g.mode==="attendance"?"메뉴는 현장에서 선택":g.menus.some(m=>m.available)?"":"메뉴 준비 중"}</span>}<button className={mine?.groupId===g.id?"secondary":"primary"} disabled={pending||(closed&&!staff)||!ev.published} onClick={()=>open(ev,g)}>{closed&&!staff?"마감":mine?.groupId===g.id?"신청 수정":"신청하기"}<Icon name="arrow" size={16}/></button></div></div></article>)}</div>{ev.groups.length===0&&<div className="empty-state">식당을 준비하고 있어요.</div>}</div>})}<div className="gentle-note"><Icon name="leaf"/><p><strong>같이 가는 분들의 이름도 알려 주세요.</strong><br/>친구, 아이들과 함께라면 한 번에 신청할 수 있어요. 마감 전까지 자유롭게 수정해 주세요.</p></div></>}
+ {editing&&<Signup key={`${editing.event.id}-${editing.group.id}-${editing.user.id}`} {...editing} staff={staff} pending={pending} run={run} commandError={error} onClose={()=>setEditing(null)} onSaved={()=>{setEditing(null);if(editing.user.id===state.user?.id)setTab("mine")}}/>}</>}
+</main><footer className="site-footer"><span>그 사랑교회 · Meals</span></footer>{state?.user&&<nav className="mobile-nav" aria-label="모바일 메뉴">{nav}</nav>}</>;
 }

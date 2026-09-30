@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The browser never accesses Firestore directly. All reads and writes
+    // pass through authenticated Next.js endpoints and server-side role checks.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

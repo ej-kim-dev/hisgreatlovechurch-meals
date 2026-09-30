@@ -1,0 +1,96 @@
+"use client";
+import { useState } from "react";
+import type { AppSnapshot,LunchEvent,Menu,Registration,RestaurantTemplate,RestaurantGroup,Role } from "@/lib/types";
+import { DateStrip,cutoffLabel,type DateChip } from "./dates";
+import { SearchSelect,PriceInput,ToggleButton } from "./controls";
+import { Photo,RestaurantArt,CrossIcon,PhotoUpload,won,localDeadline,id,blankTemplate,type RunCommand } from "./shared";
+
+type Props={state:AppSnapshot;events:LunchEvent[];dates:DateChip[];selectedDate?:string;selectDate:(date:string)=>void;run:RunCommand;pending:boolean;onEditRegistration:(r:Registration)=>void};
+export function Management({state,events,dates,selectedDate,selectDate,run,pending,onEditRegistration}:Props){
+ const [section,setSection]=useState("orders");const [draft,setDraft]=useState<LunchEvent|null>(null);const [template,setTemplate]=useState<RestaurantTemplate|null>(null);const [query,setQuery]=useState("");
+ const registrations=state.registrations.filter(r=>events.some(e=>e.id===r.eventId));
+ const unpaidOrders=registrations.filter(r=>events.some(e=>e.id===r.eventId&&e.groups.find(g=>g.id===r.groupId)?.mode==="order")&&!r.paid).length;
+ const totalPeople=registrations.reduce((s,r)=>s+r.attendees.length,0),totalMeals=registrations.reduce((s,r)=>s+r.items.reduce((n,i)=>n+i.quantity,0),0);
+ function newEvent(){const date=new Date();date.setDate(date.getDate()+((7-date.getDay())%7||7));const upcoming=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);const value=selectedDate&&selectedDate>=today?selectedDate:upcoming;setDraft({id:id(),title:"주일 점심 식사",date:value,deadline:new Date(`${value}T12:15:00+09:00`).toISOString(),published:false,groups:[]});setSection("events")}
+ const needle=query.trim().toLowerCase();const shownTemplates=[...state.templates].filter(t=>!needle||t.name.toLowerCase().includes(needle)||t.description.toLowerCase().includes(needle)).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+ function removeTemplate(t:RestaurantTemplate){if(confirm(`"${t.name}" 식당을 삭제할까요? 이미 만든 식사에는 영향이 없어요.`))void run({type:"template.delete",templateId:t.id})}
+ function removeMeal(e:LunchEvent,signups:number){if(signups>0){alert(`이미 신청한 분이 ${signups}명 있어서 삭제할 수 없어요. 신청을 먼저 취소해 주세요.`);return}if(confirm(`"${e.title}" 식사를 삭제할까요? 삭제하면 되돌릴 수 없어요.`))void run({type:"event.delete",eventId:e.id})}
+ return <><div className="management-tabs" role="tablist" aria-label="관리 항목">{[["orders","현황"],["events","식사"],["templates","식당"],...(state.user?.role==="admin"?[["users","권한"]]:[])].map(([value,label])=><button role="tab" aria-selected={section===value} key={value} onClick={()=>setSection(value)}>{label}</button>)}</div>
+ {section==="orders"&&dates.length>0&&<DateStrip dates={dates} selected={selectedDate} onSelect={selectDate}/>}
+ {section==="orders"&&selectedDate&&selectedDate<new Date(Date.now()+9*3600000).toISOString().slice(0,10)&&<p className="past-note">지난 식사예요. {unpaidOrders>0?`아직 입금 확인이 안 된 신청이 ${unpaidOrders}건 있어요. `:"모든 입금이 확인됐어요. "}식사 후 7일이 지나고 모두 입금되면 자동으로 삭제돼요.</p>}
+ {section==="orders"&&<><div className="stats-grid"><div className="stat"><span>전체 참석</span><strong>{totalPeople}<small>명</small></strong></div><div className="stat"><span>신청 건수</span><strong>{registrations.length}<small>건</small></strong></div><div className="stat"><span>주문한 메뉴</span><strong>{totalMeals}<small>개</small></strong></div></div><div className="section-heading"><h2>식당별 현황</h2></div>{!events.length&&<p className="empty-state">아직 등록한 식사가 없어요.</p>}{events.flatMap(ev=>ev.groups.map(g=>({ev,g}))).map(({ev,g})=>{const rows=registrations.filter(r=>r.groupId===g.id&&r.eventId===ev.id);const people=rows.reduce((s,r)=>s+r.attendees.length,0);const totals:Record<string,{q:number;amount:number}>={};rows.forEach(r=>r.items.forEach(i=>{const t=totals[i.name]??={q:0,amount:0};t.q+=i.quantity;t.amount+=i.price*i.quantity}));const sheet=Object.entries(totals).sort((x,y)=>x[0].localeCompare(y[0],"ko")),sheetQty=sheet.reduce((n,[,t])=>n+t.q,0),sheetAmount=sheet.reduce((n,[,t])=>n+t.amount,0);return <details className="panel group-report" key={`${ev.id}-${g.id}`}><summary className="report-bar"><div><span className="eyebrow">{state.users.find(u=>u.id===g.leaderId)?.name??"담당"} 리더</span><h3>{g.name}</h3>{events.length>1&&<small className="caption">{ev.title}</small>}</div><span className="badge">총 {people}명 · {rows.length}건</span><span className="chevron" aria-hidden="true">⌄</span></summary><div className="report-body"><div className="report-list"><h4>신청 내역</h4>{rows.length?rows.map((r,n)=><div className="registration-row clickable" key={r.id} role="button" tabIndex={0} aria-label={`${r.applicantName}님의 신청 수정`} onClick={()=>onEditRegistration(r)} onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&e.target===e.currentTarget){e.preventDefault();onEditRegistration(r)}}}>
+ <div className="reg-top"><strong className="reg-who">{n+1}. {r.applicantName} ({r.attendees.join(", ")}): {r.attendees.length}명</strong><button type="button" className="icon-action danger" aria-label={`${r.applicantName}님의 신청 취소`} title="신청 취소" disabled={pending} onClick={e=>{e.stopPropagation();if(confirm(`${r.applicantName}님의 신청을 취소할까요?`))void run({type:"registration.cancel",eventId:r.eventId,userId:r.userId})}}><CrossIcon/></button></div>
+ <ul className="reg-order-list">{r.items.length?r.items.map(i=><li key={i.menuId}>{i.name} × {i.quantity}</li>):<li className="plain">참석 신청</li>}</ul>
+ <div className="reg-foot"><span className="reg-price">{r.items.length?won(r.items.reduce((s,i)=>s+i.price*i.quantity,0)):"현장 결제"}</span>{g.mode==="order"&&<button type="button" role="checkbox" aria-checked={r.paid} className={`pay-check ${r.paid?"on":"off"}`} disabled={pending} onClick={e=>{e.stopPropagation();void run({type:"registration.paid",registrationId:r.id,paid:!r.paid})}}><span className="check-box" aria-hidden="true">{r.paid?"✓":""}</span><span className="check-label">입금</span></button>}</div>
+</div>):<p className="caption">아직 신청한 분이 없어요.</p>}</div><aside className="order-sheet"><h4>주문표</h4><div className="sheet-row"><span>참석</span><strong>{people}명</strong></div>{g.mode==="order"?<>{sheet.map(([name,t])=><div className="sheet-row" key={name}><span>{name}</span><strong>{t.q}개</strong></div>)}{sheet.length>0?<div className="sheet-total"><span>합계 {sheetQty}개</span><strong>{won(sheetAmount)}</strong></div>:<p className="caption">아직 주문이 없어요.</p>}</>:<p className="caption">참석만 신청받는 식당이에요.</p>}</aside></div></details>})}</>}
+ {section==="events"&&<><div className="section-heading"><h2>식사</h2><button className="primary" onClick={newEvent}>＋ 새 식사 만들기</button></div>{draft?<EventEditor key={draft.id} initial={draft} state={state} pending={pending} run={run} onCancel={()=>setDraft(null)} onSave={async e=>{if(await run({type:"event.save",event:e})){setDraft(null);selectDate(e.date)}}}/>:<>{dates.length>0&&<DateStrip dates={dates} selected={selectedDate} onSelect={selectDate}/>}<div className="stack">{events.map(e=>{const signups=state.registrations.filter(r=>r.eventId===e.id).length;return <div className="panel event-row clickable" key={e.id} role="button" tabIndex={0} aria-label={`${e.title} 수정`} onClick={()=>setDraft(structuredClone(e))} onKeyDown={ev=>{if((ev.key==="Enter"||ev.key===" ")&&ev.target===ev.currentTarget){ev.preventDefault();setDraft(structuredClone(e))}}}><div><span className={`badge ${e.published?"":"muted-badge"}`}>{e.published?"공개":"준비 중"}</span><h3>{e.title}</h3><p>{e.groups.length}개 식당 · {cutoffLabel(e.deadline)} 마감 · 신청 {signups}명</p></div><button type="button" className="icon-action danger" aria-label={`${e.title} 삭제`} title="삭제" disabled={pending} onClick={ev=>{ev.stopPropagation();removeMeal(e,signups)}}><CrossIcon/></button></div>})}{!events.length&&<p className="empty-state">{state.events.length?"이 날짜에는 식사가 없어요.":"첫 식사를 만들어 주세요."}</p>}</div></>}</>}
+ {section==="templates"&&<><div className="section-heading"><div><h2>식당</h2><p>자주 가는 식당을 저장하고 매주 다시 사용해요.</p></div><button className="primary" onClick={()=>setTemplate(blankTemplate())}>＋ 식당 추가</button></div>{template?<form className="panel editor-form" onSubmit={async e=>{e.preventDefault();if(await run({type:"template.save",template}))setTemplate(null)}}><fieldset disabled={pending}><RestaurantFields value={template} onChange={setTemplate}/><div className="form-actions"><button className="primary">식당 저장</button><button className="secondary" type="button" onClick={()=>setTemplate(null)}>닫기</button></div></fieldset></form>:<><input type="search" className="template-search" placeholder="식당 검색" aria-label="식당 검색" value={query} onChange={e=>setQuery(e.target.value)}/><div className="restaurant-grid">{shownTemplates.map((t,i)=><article className="restaurant-card clickable" key={t.id} role="button" tabIndex={0} aria-label={`${t.name} 수정`} onClick={()=>setTemplate(structuredClone(t))} onKeyDown={e=>{if((e.key==="Enter"||e.key===" ")&&e.target===e.currentTarget){e.preventDefault();setTemplate(structuredClone(t))}}}><div className="card-photo">{t.photoUrl?<Photo src={t.photoUrl} alt={t.name}/>:<RestaurantArt index={i} name={t.name}/>}</div><div className="restaurant-info"><div className="restaurant-title"><h3>{t.name}</h3>{t.link&&<a className="store-link" href={t.link} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}>가게 보기 ↗</a>}</div>{t.description&&<p className="restaurant-description">{t.description}</p>}<div className="template-foot"><button type="button" className="icon-action danger" aria-label={`${t.name} 삭제`} title="식당 삭제" disabled={pending} onClick={e=>{e.stopPropagation();removeTemplate(t)}}><CrossIcon/></button><span className="caption">메뉴 {t.menus.length}개</span></div></div></article>)}</div>{!shownTemplates.length&&<p className="empty-state">{state.templates.length?"검색 결과가 없어요.":"자주 가는 식당을 먼저 추가해 주세요."}</p>}</>}</>}
+ {section==="users"&&state.user?.role==="admin"&&<section className="panel"><h2>권한</h2><p>교인은 본인 신청, 리더는 전체 식사, 관리자는 계정 권한까지 관리해요.</p>{state.users.map(u=><div className="user-row" key={u.id}><strong>{u.name||"이름 입력 전"}{u.id===state.user?.id?" (나)":""}</strong><label><span className="sr-only">{u.name} 권한</span><select disabled={pending} value={u.role} onChange={e=>{if(confirm(`${u.name}님의 권한을 변경할까요?`))void run({type:"user.role",userId:u.id,role:e.target.value as Role})}}><option value="viewer">교인</option><option value="editor">리더</option><option value="admin">관리자</option></select></label></div>)}</section>}
+ </>;
+}
+
+function RestaurantFields({value,onChange}:{value:RestaurantTemplate;onChange:(value:RestaurantTemplate)=>void}){
+ const setMenu=(index:number,patch:Partial<Menu>)=>onChange({...value,menus:value.menus.map((m,j)=>j===index?{...m,...patch}:m)});
+ const addMenu=()=>onChange({...value,menus:[...value.menus,{id:id(),name:"",price:0,photoUrl:"",available:true}]});
+ return <>
+  <div className="field-grid">
+   <label>식당 이름<input required maxLength={80} value={value.name} onChange={e=>onChange({...value,name:e.target.value})}/></label>
+   <label>소개<input maxLength={300} value={value.description} onChange={e=>onChange({...value,description:e.target.value})} placeholder="식당을 짧게 소개해 주세요"/></label>
+   <label>식당 링크 (선택)<input type="url" maxLength={500} value={value.link??""} onChange={e=>onChange({...value,link:e.target.value})} placeholder="https://naver.me/… 지도나 식당 링크"/></label>
+  </div>
+  <PhotoUpload value={value.photoUrl} label="식당 사진" onChange={photoUrl=>onChange({...value,photoUrl})}/>
+  <div className="section-heading"><h3>메뉴 (선택)</h3></div>
+  {!value.menus.length&&<p className="caption">메뉴는 선택 사항이에요. 참석만 받으려면 비워 두세요.</p>}
+  {value.menus.map((m,i)=><div className="menu-editor" key={m.id}>
+   <span className="menu-index">{i+1}</span>
+   <div className="menu-editor-body">
+    <div className="field-grid">
+     <label>메뉴 이름<input required maxLength={80} value={m.name} onChange={e=>setMenu(i,{name:e.target.value})}/></label>
+     <div className="field"><span className="field-label">가격 (원)</span><PriceInput value={m.price} onChange={price=>setMenu(i,{price})}/></div>
+    </div>
+    <PhotoUpload value={m.photoUrl} label={`${m.name||`메뉴 ${i+1}`} 사진`} onChange={photoUrl=>setMenu(i,{photoUrl})}/>
+    <div className="menu-actions">
+     <ToggleButton pressed={m.available} onChange={available=>setMenu(i,{available})}>주문 가능</ToggleButton>
+     <button type="button" className="danger-button" onClick={()=>{if(confirm("이 메뉴를 목록에서 제거할까요? 기존 주문 기록은 유지됩니다."))onChange({...value,menus:value.menus.filter((_,j)=>j!==i)})}}>메뉴 제거</button>
+    </div>
+   </div>
+  </div>)}
+  <button type="button" className="secondary add-menu" onClick={addMenu}>＋ 메뉴 추가</button>
+ </>;
+}
+
+function EventEditor({initial,state,pending,run,onSave,onCancel}:{initial:LunchEvent;state:AppSnapshot;pending:boolean;run:RunCommand;onSave:(event:LunchEvent)=>Promise<void>;onCancel:()=>void}){
+ const [draft,setDraft]=useState(initial);const leaders=state.users.filter(u=>u.role!=="viewer");
+ const leaderOptions=leaders.map(u=>({value:u.id,label:u.name||"이름 없음"})),templateOptions=state.templates.map(t=>({value:t.id,label:t.name}));
+ function updateGroup(group:RestaurantGroup){setDraft({...draft,groups:draft.groups.map(g=>g.id===group.id?group:g)})}
+ function addTemplate(templateId:string){const t=state.templates.find(x=>x.id===templateId);if(!t)return;setDraft({...draft,groups:[...draft.groups,{...structuredClone(t),id:id(),templateId:t.id,leaderId:state.user?.id??leaders[0]?.id??"",mode:t.menus.length?"order":"attendance",payment:state.user?.bank??{bank:"",account:"",holder:""}}]})}
+ return <form className="panel editor-form" onSubmit={e=>{e.preventDefault();void onSave(draft)}}><fieldset disabled={pending}>
+  <div className="field-grid">
+   <label>식사 이름<input required maxLength={100} value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
+   <label>식사 날짜<input required type="date" value={draft.date} onChange={e=>{if(e.target.value)setDraft({...draft,date:e.target.value,deadline:new Date(`${e.target.value}T12:15:00+09:00`).toISOString()})}}/></label>
+   <label>신청 마감 (한국 시간)<input required type="datetime-local" value={localDeadline(draft.deadline)} onChange={e=>{if(e.target.value)setDraft({...draft,deadline:new Date(`${e.target.value}:00+09:00`).toISOString()})}}/></label>
+   <div className="field"><span className="field-label">공개</span><ToggleButton pressed={draft.published} onChange={published=>setDraft({...draft,published})}>교인에게 공개</ToggleButton></div>
+  </div>
+  <div className="group-add"><div className="field"><span className="field-label">식당 선택</span><SearchSelect label="식당 선택" options={templateOptions} value="" onChange={addTemplate}/></div></div>
+  {!state.templates.length&&<p className="caption">식당 탭에서 식당을 먼저 만들어 주세요.</p>}
+  {draft.groups.map((g,index)=><details className="group-editor" key={g.id} open>
+   <summary><span className="group-title"><span className="chevron" aria-hidden="true">⌄</span>{index+1}. {g.name||"새 식당"}</span><button type="button" className="remove-x" aria-label={`${g.name||"식당"} 제거`} onClick={e=>{e.preventDefault();e.stopPropagation();if(confirm("이번 식사에서 식당을 제거할까요? 신청이 있는 식당은 제거할 수 없습니다."))setDraft({...draft,groups:draft.groups.filter(item=>item.id!==g.id)})}}>×</button></summary>
+   <div className="group-editor-body">
+    <div className="field-grid">
+     <div className="field"><span className="field-label">담당자</span><SearchSelect label="담당자" options={leaderOptions} value={g.leaderId} onChange={leaderId=>updateGroup({...g,leaderId})}/><small className="caption">목록에 없는 분은 권한 탭에서 리더로 지정해 주세요.</small></div>
+     <label>신청 방식<select value={g.mode} onChange={e=>updateGroup({...g,mode:e.target.value as "attendance"|"order"})}><option value="attendance">참석만 신청</option><option value="order">참석 + 메뉴 주문</option></select></label>
+    </div>
+    <RestaurantFields value={g} onChange={t=>updateGroup({...g,...t})}/>
+    <h3>담당 리더 입금 계좌</h3>
+    <div className="field-grid">
+     <label>은행<input maxLength={40} value={g.payment.bank} onChange={e=>updateGroup({...g,payment:{...g.payment,bank:e.target.value}})}/></label>
+     <label>계좌번호<input maxLength={60} value={g.payment.account} onChange={e=>updateGroup({...g,payment:{...g.payment,account:e.target.value}})}/></label>
+     <label>예금주<input maxLength={40} value={g.payment.holder} onChange={e=>updateGroup({...g,payment:{...g.payment,holder:e.target.value}})}/></label>
+    </div>
+    <div className="form-actions"><button type="button" className="secondary" disabled={!state.user?.bank} onClick={()=>state.user?.bank&&updateGroup({...g,payment:state.user.bank})}>내 기본 계좌 불러오기</button><button type="button" className="secondary" disabled={pending||!g.payment.account} onClick={()=>void run({type:"profile.bank",bank:g.payment})}>이 계좌를 내 기본으로 저장</button></div>
+   </div>
+  </details>)}
+  <p className="caption">이번 수정은 식당 탭이나 다른 식사에 영향을 주지 않습니다. 기존 주문의 가격과 기록은 유지됩니다.</p>
+  <div className="form-actions"><button className="primary" disabled={pending}>{pending?"저장 중…":"식사 저장"}</button><button className="secondary" type="button" onClick={onCancel}>닫기</button></div>
+ </fieldset></form>;
+}
