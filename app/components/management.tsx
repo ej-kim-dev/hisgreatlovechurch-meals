@@ -32,7 +32,7 @@ export function Management({state,events,dates,selectedDate,selectDate,run,pendi
  </>;
 }
 
-function RestaurantFields({value,onChange}:{value:RestaurantTemplate;onChange:(value:RestaurantTemplate)=>void}){
+function RestaurantFields({value,onChange,menuMode="edit"}:{value:RestaurantTemplate;onChange:(value:RestaurantTemplate)=>void;menuMode?:"edit"|"visibility"}){
  const setMenu=(index:number,patch:Partial<Menu>)=>onChange({...value,menus:value.menus.map((m,j)=>j===index?{...m,...patch}:m)});
  const addMenu=()=>onChange({...value,menus:[...value.menus,{id:id(),name:"",price:0,photoUrl:"",available:true}]});
  return <>
@@ -42,6 +42,11 @@ function RestaurantFields({value,onChange}:{value:RestaurantTemplate;onChange:(v
    <label>식당 링크 (선택)<input type="url" maxLength={500} value={value.link??""} onChange={e=>onChange({...value,link:e.target.value})} placeholder="https://naver.me/… 지도나 식당 링크"/></label>
   </div>
   <PhotoUpload value={value.photoUrl} label="식당 사진" onChange={photoUrl=>onChange({...value,photoUrl})}/>
+  {menuMode==="visibility"?<>
+   <div className="section-heading"><h3>메뉴</h3></div>
+   {value.menus.length?<div className="menu-visibility">{value.menus.map((m,i)=><div className={`menu-vis-row ${m.available?"":"is-hidden"}`} key={m.id}><div className="menu-vis-name"><strong>{m.name}</strong><span>{won(m.price)}</span></div><ToggleButton pressed={m.available} onChange={available=>setMenu(i,{available})}>보이기</ToggleButton></div>)}</div>:<p className="caption">이 식당에는 메뉴가 없어요.</p>}
+   <p className="caption menu-vis-note">숨긴 메뉴는 이 식사에서 주문할 수 없어요. 메뉴 추가·수정·제거는 식당 탭에서 해 주세요.</p>
+  </>:<>
   <div className="section-heading"><h3>메뉴 (선택)</h3></div>
   {!value.menus.length&&<p className="caption">메뉴는 선택 사항이에요. 참석만 받으려면 비워 두세요.</p>}
   {value.menus.map((m,i)=><div className="menu-editor" key={m.id}>
@@ -58,6 +63,7 @@ function RestaurantFields({value,onChange}:{value:RestaurantTemplate;onChange:(v
    </div>
   </div>)}
   <button type="button" className="secondary add-menu" onClick={addMenu}>＋ 메뉴 추가</button>
+  </>}
  </>;
 }
 
@@ -82,7 +88,7 @@ function EventEditor({initial,state,pending,run,onSave,onCancel}:{initial:LunchE
      <div className="field"><span className="field-label">담당자</span><SearchSelect label="담당자" options={leaderOptions} value={g.leaderId} onChange={leaderId=>updateGroup({...g,leaderId})}/><small className="caption">목록에 없는 분은 권한 탭에서 리더로 지정해 주세요.</small></div>
      <label>신청 방식<select value={g.mode} onChange={e=>updateGroup({...g,mode:e.target.value as "attendance"|"order"})}><option value="attendance">참석만 신청</option><option value="order">참석 + 메뉴 주문</option></select></label>{g.mode==="order"&&<div className="field"><span className="field-label">결제</span><ToggleButton pressed={!!g.churchPaid} onChange={churchPaid=>updateGroup({...g,churchPaid,...(churchPaid?{payment:{bank:"",account:"",holder:""}}:{})})}>교회 지원</ToggleButton></div>}
     </div>
-    <RestaurantFields value={g} onChange={t=>updateGroup({...g,...t})}/>
+    <RestaurantFields value={g} menuMode="visibility" onChange={t=>updateGroup({...g,...t})}/>
     {!g.churchPaid&&<><h3>담당 리더 입금 계좌</h3>
     <div className="field-grid">
      <label>은행<input maxLength={40} value={g.payment.bank} onChange={e=>updateGroup({...g,payment:{...g.payment,bank:e.target.value}})}/></label>
