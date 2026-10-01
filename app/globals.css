@@ -308,4 +308,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .mobile-nav button:not(.active):hover{background:none;color:#5f5b54;font-weight:700}
 .mobile-nav button:not(.active):hover .nav-label::before{background:#cfccc6}
 }
-/* v35 */
+/* 권한: search + role filter chips */
+.role-tools .template-search{margin-bottom:12px}
+.filter-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--muted);font-size:14px;font-weight:600}
+.filter-chip span{font-variant-numeric:tabular-nums;opacity:.75}
+.filter-chip:hover:not([aria-pressed=true]){background:var(--tint);color:var(--ink)}
+.filter-chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.role-list .empty-state{padding:30px 10px;margin:0}
+/* v36 */
