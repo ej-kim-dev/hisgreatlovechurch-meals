@@ -6,7 +6,7 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 .account-details{margin-top:35px;color:var(--muted);font-size:11px}.account-details summary{cursor:pointer}.account-details p{margin:10px 0 4px}.account-details code{overflow-wrap:anywhere}.account-details .text-button{font-size:11px}
-.brand{gap:14px}.brand-logo{height:48px;width:auto;mix-blend-mode:multiply}.brand-word{font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--accent);border-left:1px solid var(--line);padding-left:14px;white-space:nowrap}
+.brand{gap:14px}.brand-logo{height:48px;width:auto;mix-blend-mode:multiply}.brand-compact{display:none;height:40px;width:auto;mix-blend-mode:multiply}.brand-word{font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--accent);border-left:1px solid var(--line);padding-left:14px;white-space:nowrap}
 .date-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 14px;margin:0 -2px 18px;scroll-snap-type:x proximity;scrollbar-width:thin}
 .date-chip{flex:0 0 auto;min-width:104px;padding:13px 18px;border:1px solid var(--line);background:var(--paper);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);scroll-snap-align:center}
 .date-chip small{font-size:12px;color:var(--muted)}.date-chip strong{font-size:30px;line-height:1.15;font-weight:700;letter-spacing:-.03em}
@@ -15,7 +15,7 @@
 .badge.open-badge{background:var(--accent);color:#fff}.open-badge .status-dot{background:#fff}
 .banner-date{display:flex;align-items:baseline;gap:12px;margin:16px 0 8px;flex-wrap:wrap}.banner-date strong{font-size:52px;line-height:1.1;font-weight:700;letter-spacing:-.06em;color:var(--ink)}.banner-date span{font-size:22px;font-weight:600;color:var(--accent-dark)}
 .week-banner h2{font-size:22px;margin:0 0 10px}.week-banner p{color:var(--accent-dark)}
-@media(max-width:700px){.brand-logo{height:38px}.brand-word{font-size:12px;padding-left:9px}.date-chip{min-width:88px;padding:11px 14px}.date-chip strong{font-size:26px}.banner-date strong{font-size:42px}.banner-date span{font-size:18px}.week-banner{padding:24px 20px}}
+@media(max-width:700px){.brand-logo{display:none}.brand-compact{display:block}.brand-word{font-size:12px;padding-left:9px}.date-chip{min-width:88px;padding:11px 14px}.date-chip strong{font-size:26px}.banner-date strong{font-size:42px}.banner-date span{font-size:18px}.week-banner{padding:24px 20px}}
 .desktop-nav{height:auto;gap:4px;padding:5px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
 .desktop-nav button{height:auto;padding:9px 22px;border-radius:999px;transition:background .18s,color .18s,box-shadow .18s}
 .desktop-nav button:hover{background:var(--tint);color:var(--accent-dark);box-shadow:0 0 0 1px var(--line)}
@@ -308,4 +308,4 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .mobile-nav button:not(.active):hover{background:none;color:#5f5b54;font-weight:700}
 .mobile-nav button:not(.active):hover .nav-label::before{background:#cfccc6}
 }
-/* v34 */
+/* v35 */
