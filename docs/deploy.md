@@ -1,41 +1,93 @@
-# Live setup: Google Cloud + Kakao
+# Deployment guide
 
-The code runs as a Next.js server on Cloud Run. This repository is connected to project `hisgreatlovechurch-meals`. The project is newly created: Firebase, the Firestore database (Standard edition, `asia-northeast3` Seoul), the deployed deny-all rules, and a Firebase web app still need to be set up, and the website is not deployed yet.
+Everything runs in one Google Cloud / Firebase project, `hisgreatlovechurch-meals` (region `asia-northeast3`, Seoul).
 
-## 1. Google Cloud billing and tools
-
-Enable billing for the dedicated project in Google Cloud Console. Cloud Run, Cloud Build, and Cloud Storage may require a billing account and may incur charges. Install the official Google Cloud CLI and authenticate to the Google account that owns the project. Choose `hisgreatlovechurch-meals` and `asia-northeast3`. The Google Cloud [Next.js Cloud Run guide](https://docs.cloud.google.com/run/docs/quickstarts/frameworks/deploy-nextjs-service) covers source deployment.
-
-Create a private Cloud Storage bucket in Seoul for restaurant and menu photos. Grant the Cloud Run service account object create/read permission for that bucket, Firestore user access, and Firebase Authentication Admin. It also needs permission to sign Firebase custom tokens (Service Account Token Creator on itself, with IAM Credentials API enabled). Use a dedicated service account with only these grants.
-
-## 2. Kakao Developers
-
-Create a Kakao Developers application for the website. Enable Kakao Login and client secret. Add the final Cloud Run HTTPS domain as a web platform and register the exact redirect URI:
-
-```text
-https://YOUR-CLOUD-RUN-DOMAIN/api/auth/callback
+```
+visitor → Firebase Hosting   hisgreatlovechurch-meals.web.app   (front door, forwards everything)
+        → Cloud Run          service "meals"                    (runs this Next.js code)
+        → Firestore          database "(default)"               (meals, restaurants, signups, users)
+        → Cloud Storage      bucket hisgreatlovechurch-meals-photos (private, photos)
+        → Firebase Auth      turns a verified Kakao user into a 5-day session cookie
+        → Secret Manager     kakao-client-secret
 ```
 
-The app needs the Kakao REST API key (`KAKAO_CLIENT_ID`) and client secret (`KAKAO_CLIENT_SECRET`). We intentionally do not request email or phone consent. Do not commit the secret to Git; store it in Google Secret Manager.
+Share only **https://hisgreatlovechurch-meals.web.app**. The `run.app` address reaches the same service, but login only works on the address in `APP_URL`.
 
-## 3. Firebase Authentication
+## Redeploying after a code change
 
-Enable Firebase Authentication for the project. The backend uses Firebase custom tokens to turn the verified Kakao identity into a five-day session cookie. Find the Firebase web API key in the Firebase project's web app settings; place it in the server configuration as `FIREBASE_WEB_API_KEY`. The Firebase Admin SDK uses Cloud Run's service identity rather than a downloaded service-account key.
+Cloud Run is the only thing that changes when the code changes:
 
-The first admin requires `BOOTSTRAP_ADMIN_KAKAO_ID` set to the numeric Kakao ID of 김은종. The app displays an account's internal ID after first login to help identify it; the bootstrap setting can be added afterward and the next login promotes that account only if no admin exists. An admin can then assign leader/admin roles in the site.
+```bash
+gcloud run deploy meals --source . --region asia-northeast3 --quiet
+```
 
-## 4. Cloud Run configuration
+Run `npm run typecheck && npm run lint && npm test` first. Firebase Hosting only needs redeploying when `firebase.json` changes:
 
-Deploy the source as a public Cloud Run service named `sunday-lunch` in `asia-northeast3` with Node.js 22 or newer. Cloud Run must serve the web page publicly so visitors can reach the Kakao login screen; app data remains behind the signed-in session. Set:
+```bash
+firebase deploy --only hosting --project hisgreatlovechurch-meals
+```
 
-- `GOOGLE_CLOUD_PROJECT=hisgreatlovechurch-meals`
-- `APP_URL=https://YOUR-CLOUD-RUN-DOMAIN` — exact trusted origin, no trailing path
-- `GCS_BUCKET` — your private photo bucket
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` — the Cloud Run service account email
-- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` — from Kakao (store secret in Secret Manager)
-- `FIREBASE_WEB_API_KEY` — Firebase web app key
-- `BOOTSTRAP_ADMIN_KAKAO_ID` — numeric Kakao ID for the first admin
+Changing a setting without touching code (creates a new revision, no rebuild):
 
-`APP_MODE` must be absent in production. Cloud Run sets `K_SERVICE`, which disables demo sessions in this code.
+```bash
+gcloud run services update meals --region asia-northeast3 --update-env-vars NAME=value
+```
 
-Cloud Run assigns the service URL after its first deployment. Set `APP_URL` and Kakao redirect URI to that URL, then redeploy/update the service with the finished configuration. Run a real Kakao login, register a test member, create a test Sunday event, and verify an order and a leader correction before sharing the link. Avoid real names or bank details until this end-to-end check succeeds.
+## Configuration (Cloud Run environment)
+
+| Name | Value |
+|---|---|
+| `GOOGLE_CLOUD_PROJECT` | `hisgreatlovechurch-meals` |
+| `APP_URL` | `https://hisgreatlovechurch-meals.web.app` — the exact trusted origin; no trailing path |
+| `GCS_BUCKET` | `hisgreatlovechurch-meals-photos` |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | `meals-run@hisgreatlovechurch-meals.iam.gserviceaccount.com` |
+| `KAKAO_CLIENT_ID` | Kakao REST API key |
+| `KAKAO_CLIENT_SECRET` | from Secret Manager secret `kakao-client-secret` (never commit it) |
+| `FIREBASE_WEB_API_KEY` | web API key from the Firebase project's web app settings |
+| `BOOTSTRAP_ADMIN_KAKAO_ID` | numeric Kakao ID of the first admin |
+
+`APP_MODE` must not be set in production. Cloud Run sets `K_SERVICE`, which switches demo login off.
+
+## Service account and permissions
+
+Cloud Run runs as `meals-run@…` with only what it needs:
+
+- project roles: `roles/datastore.user` (Firestore), `roles/firebaseauth.admin`, `roles/secretmanager.secretAccessor`;
+- `roles/storage.objectUser` on the photo bucket only (private, public access prevented);
+- `roles/iam.serviceAccountTokenCreator` on itself (to sign Firebase custom tokens; needs the IAM Credentials API enabled).
+
+The service is publicly invokable (`allUsers` → Cloud Run Invoker) so visitors can reach the login page; app data stays behind the session. The Admin SDK uses the service identity, so there is no downloaded key file.
+
+## Kakao Developers
+
+Kakao Login is enabled with a client secret. The only data requested is Kakao's app-scoped ID (no email, no phone). Register the redirect URI for the live address:
+
+```text
+https://hisgreatlovechurch-meals.web.app/api/auth/callback
+```
+
+If the address ever changes (for example a custom domain), add the new redirect URI in Kakao first, then update `APP_URL`, and only then remove the old one. People need to sign in again after the address changes.
+
+**Link preview in KakaoTalk.** Kakao remembers the preview of a link it has already seen. After changing the preview image or title, open Kakao's sharing debugger (developers.kakao.com → 도구) for the address and re-scrape it, or share the link with a throw-away ending such as `/?v=2`.
+
+## First admin
+
+Set `BOOTSTRAP_ADMIN_KAKAO_ID` to the numeric Kakao ID of the first admin. On that account's next login, if no admin exists yet, it becomes admin. After that admins assign leader and admin roles in 관리 → 권한.
+
+## Data and archive
+
+- Firestore collections: `users`, `templates` (restaurants), `events` (meals), `registrations`, `audits`. `firestore.rules` denies all direct browser access; only the server reads and writes.
+- Each meal has `archived: true/false`. A meal is archived 7 days after its date once every ordered signup is paid (or church-supported). Day-to-day screens load only unarchived meals; 관리 → 아카이브 reads a date range on request. Nothing is deleted.
+- Firestore is in `asia-northeast3`; the location cannot be changed after creation.
+
+## Custom domain (optional, free)
+
+Firebase console → Hosting → Add custom domain, add the DNS records Firebase shows at the domain registrar, then follow the Kakao steps above for the new address.
+
+## Troubleshooting
+
+- **Kakao login fails ("카카오 로그인을 완료하지 못했어요")**: check that the redirect URI in Kakao matches `APP_URL` exactly, that `KAKAO_CLIENT_SECRET` is mounted, and read the service log: `gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="meals" AND severity>=WARNING' --project hisgreatlovechurch-meals --limit 20 --freshness 1h`.
+- **Logged out right after login**: Firebase Hosting drops every cookie except `__session`; do not rename the session cookie in `lib/auth.ts`.
+- **The app says data is too large**: the active meals, restaurants or users exceeded 2,000 documents. Archive or raise the limit in `lib/store.ts`.
+- **First visit after a quiet period is slow**: Cloud Run scales to zero. Set minimum instances to 1 if that bothers people (small monthly cost).
+- **iPhone zooms when typing**: every field must stay at 16px on phones; keep that rule in `app/globals.css`.
