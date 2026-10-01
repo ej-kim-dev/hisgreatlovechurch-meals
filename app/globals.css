@@ -273,4 +273,10 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
 /* name rows: number | name | × */
 .attendee-row label span.attendee-no{min-width:22px;width:22px;text-align:center;font-size:15px;font-weight:700;color:var(--muted)}
 .attendee-row .icon-action{flex:0 0 auto}
-/* v29b */
+/* 식사 editor: menus can only be shown or hidden */
+.menu-visibility{border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:hidden}
+.menu-vis-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px}.menu-vis-row+.menu-vis-row{border-top:1px solid var(--line)}
+.menu-vis-name{display:flex;flex-direction:column;min-width:0}.menu-vis-name strong{font-size:15px;overflow-wrap:anywhere}.menu-vis-name span{font-size:13px;color:var(--muted)}
+.menu-vis-row.is-hidden .menu-vis-name{opacity:.45}.menu-vis-row.is-hidden .menu-vis-name strong{text-decoration:line-through}
+.menu-vis-row .toggle-button{flex:0 0 auto;padding:8px 12px}.menu-vis-note{margin-top:10px}
+/* v30b */
