@@ -182,13 +182,12 @@ input:focus-visible,select:focus-visible,.select-trigger:focus-visible{outline:2
 .card-x{position:absolute;top:10px;right:10px;width:36px;height:36px;background:#fff;box-shadow:0 1px 4px #0002}
 .restaurant-card.clickable:hover{box-shadow:0 10px 30px #39452a14}
 /* 마이 페이지 summary */
-.summary-date{font-size:14px;font-weight:600;color:var(--muted)}
 .summary-title{display:flex;align-items:center;justify-content:space-between;gap:12px}.order-summary .summary-title h2{margin:0}
-.order-summary .summary-top{margin-bottom:14px}
+.order-summary .summary-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 /* 신청 tile: tick + what I ordered */
 .ordered-mark{display:inline-flex;align-items:flex-start;gap:6px;flex:1;min-width:0;color:var(--ok);font-weight:650;font-size:13px;line-height:1.4}
 .ordered-mark svg{flex:0 0 auto;margin-top:2px}.ordered-mark span{overflow-wrap:anywhere}
-.summary-actions{display:flex;gap:8px}.order-summary .summary-name{margin:0 0 6px}
+.order-summary .summary-name{margin:0 0 6px}
 .ordered-lines{display:flex;flex-direction:column;gap:2px}
 .template-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
 /* 교회 지원 */
@@ -309,4 +308,4 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .mobile-nav button:not(.active):hover{background:none;color:#5f5b54;font-weight:700}
 .mobile-nav button:not(.active):hover .nav-label::before{background:#cfccc6}
 }
-/* v33b */
+/* v34 */
