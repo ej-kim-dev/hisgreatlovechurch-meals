@@ -6,7 +6,7 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 .account-details{margin-top:35px;color:var(--muted);font-size:11px}.account-details summary{cursor:pointer}.account-details p{margin:10px 0 4px}.account-details code{overflow-wrap:anywhere}.account-details .text-button{font-size:11px}
-.brand{gap:14px}.brand-logo{height:48px;width:auto;mix-blend-mode:multiply}.brand-word{font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--accent);border-left:1px solid var(--line);padding-left:14px;white-space:nowrap}
+.brand{gap:14px}.brand-icon{display:block;height:54px;width:54px}
 .date-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 14px;margin:0 -2px 18px;scroll-snap-type:x proximity;scrollbar-width:thin}
 .date-chip{flex:0 0 auto;min-width:104px;padding:13px 18px;border:1px solid var(--line);background:var(--paper);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);scroll-snap-align:center}
 .date-chip small{font-size:12px;color:var(--muted)}.date-chip strong{font-size:30px;line-height:1.15;font-weight:700;letter-spacing:-.03em}
@@ -15,7 +15,7 @@
 .badge.open-badge{background:var(--accent);color:#fff}.open-badge .status-dot{background:#fff}
 .banner-date{display:flex;align-items:baseline;gap:12px;margin:16px 0 8px;flex-wrap:wrap}.banner-date strong{font-size:52px;line-height:1.1;font-weight:700;letter-spacing:-.06em;color:var(--ink)}.banner-date span{font-size:22px;font-weight:600;color:var(--accent-dark)}
 .week-banner h2{font-size:22px;margin:0 0 10px}.week-banner p{color:var(--accent-dark)}
-@media(max-width:700px){.brand-logo{height:38px}.brand-word{font-size:12px;padding-left:9px}.date-chip{min-width:88px;padding:11px 14px}.date-chip strong{font-size:26px}.banner-date strong{font-size:42px}.banner-date span{font-size:18px}.week-banner{padding:24px 20px}}
+@media(max-width:700px){.brand-icon{height:50px;width:50px}.date-chip{min-width:88px;padding:11px 14px}.date-chip strong{font-size:26px}.banner-date strong{font-size:42px}.banner-date span{font-size:18px}.week-banner{padding:24px 20px}}
 .desktop-nav{height:auto;gap:4px;padding:5px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
 .desktop-nav button{height:auto;padding:9px 22px;border-radius:999px;transition:background .18s,color .18s,box-shadow .18s}
 .desktop-nav button:hover{background:var(--tint);color:var(--accent-dark);box-shadow:0 0 0 1px var(--line)}
@@ -26,7 +26,7 @@
 .account-pill strong{font-weight:650;color:var(--ink)}.account-pill small{font-size:11px;color:var(--muted);display:inline}
 .logout-pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:8px 16px;font-size:12px;color:var(--muted);white-space:nowrap}
 .logout-pill:hover:not(:disabled){background:var(--tint);color:var(--accent-dark)}
-@media(max-width:700px){.account{gap:6px}.account-pill{padding:7px 11px;font-size:12px}.account-pill small{display:none}.logout-pill{padding:7px 11px;font-size:11px}.brand-word{display:none}}
+@media(max-width:700px){.account{gap:6px}.account-pill{padding:7px 11px;font-size:12px}.account-pill small{display:none}.logout-pill{padding:7px 11px;font-size:11px}}
 /* theme */
 .date-chip .chip-title{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-weight:600}
 .field-grid label small.caption{font-weight:400;margin-top:2px}
@@ -95,14 +95,14 @@ input:focus-visible,select:focus-visible,.select-trigger:focus-visible{outline:2
 .desktop-nav{border-radius:14px}.desktop-nav button{border-radius:var(--radius-btn)}
 .add-menu{width:100%;margin-top:4px}
 /* menu cards */
-.menu-editor{display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;padding:18px;margin-bottom:14px}
-.menu-index{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:2px}
+.menu-editor{display:flex;flex-direction:column;gap:14px;padding:18px;margin-bottom:14px}.menu-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.menu-index{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
 .menu-editor-body{min-width:0}.menu-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 .group-editor>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none}.group-editor>summary::-webkit-details-marker{display:none}
 .remove-x{flex:0 0 auto;width:34px;height:34px;border-radius:var(--radius-btn);border:1px solid #efd0c8;background:var(--bad-tint);color:var(--bad);font-size:22px;line-height:1}.remove-x:hover{background:#f6ddd7}
 .group-add{overflow:visible}.group-add .field{flex:1}
 .loading-brand{min-height:60vh;display:grid;place-items:center;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 20px}
-@media(max-width:700px){.menu-editor{grid-template-columns:28px minmax(0,1fr);gap:10px;padding:14px}.price-steps button{padding:6px 7px}}
+@media(max-width:700px){.menu-editor{gap:12px;padding:14px}.price-steps button{padding:6px 7px}}
 /* v6 */
 .price-input input:not([type=checkbox]):not([type=file]){border:0;background:transparent;height:100%;padding:0 12px;border-radius:0;outline:0}
 .price-input{overflow:hidden}
@@ -239,7 +239,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
 .manage-restaurants{gap:12px}.manage-restaurants .restaurant-card{position:relative;display:grid;grid-template-columns:96px minmax(0,1fr);align-items:stretch}
 .manage-restaurants .card-photo{position:static;height:auto;min-height:104px}.manage-restaurants .card-photo>img{height:100%}
 .manage-restaurants .restaurant-art{padding:6px 6px 0}.manage-restaurants .restaurant-info{padding:14px 56px 14px 14px}
-.manage-restaurants .restaurant-info h3{font-size:17px}.manage-restaurants .restaurant-title{flex-wrap:wrap;gap:6px}
+.manage-restaurants .restaurant-info h3{font-size:17px}
 .manage-restaurants .restaurant-description{font-size:12px;margin:4px 0}.manage-restaurants .caption{margin:0;font-size:12px}
 .manage-restaurants .card-x{top:10px;right:10px;width:34px;height:34px;box-shadow:none}
 .template-search{max-width:none}
@@ -279,4 +279,10 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=datetime-local]::
 .menu-vis-name{display:flex;flex-direction:column;min-width:0}.menu-vis-name strong{font-size:15px;overflow-wrap:anywhere}.menu-vis-name span{font-size:13px;color:var(--muted)}
 .menu-vis-row.is-hidden .menu-vis-name{opacity:.45}.menu-vis-row.is-hidden .menu-vis-name strong{text-decoration:line-through}
 .menu-vis-row .toggle-button{flex:0 0 auto;padding:8px 12px}.menu-vis-note{margin-top:10px}
-/* v30b */
+/* 식당 tab card: name is the link (bordered, with an arrow); pencil top left, × top right */
+.restaurant-name{margin:0 0 9px}
+.store-pill{display:inline-flex;align-items:center;gap:8px;max-width:100%;border:1px solid var(--line);border-radius:var(--radius-btn);padding:7px 12px;background:var(--paper);color:var(--ink);font:inherit;line-height:1.3;text-decoration:none}
+.store-pill span{min-width:0;overflow-wrap:anywhere}.store-pill svg{flex:0 0 auto;color:var(--muted)}.store-pill:hover{background:var(--tint)}
+.card-edit.icon-action{position:absolute;top:10px;left:10px;z-index:2;width:36px;height:36px;padding:0}
+@media(max-width:700px){.manage-restaurants .card-edit{top:10px;left:10px;width:34px;height:34px}.manage-restaurants .restaurant-info{padding:14px 50px 14px 12px}.manage-restaurants .store-pill{font-size:16px;padding:6px 10px;gap:6px}.manage-restaurants .store-pill svg{width:14px;height:14px}}
+/* v31d */
