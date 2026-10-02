@@ -62,3 +62,16 @@ assert.throws(()=>applyCommand(reg,leader,{type:'registration.paid',registration
 assert.deepEqual(archiveExpired(reg,new Date(Date.parse('2027-01-20T00:00:00+09:00'))).archived.includes('church'),true);});
 
 test('saving a meal keeps it active (archived=false) and new audit ids are unique without loading history',()=>{const s=createDemoState(),e=structuredClone(s.events[0]);const n=applyCommand({...s,audits:[]},s.users[1],{type:'event.save',event:e});assert.equal(n.events.find(x=>x.id===e.id)?.archived,false);const m=applyCommand({...n,audits:[]},s.users[1],{type:'event.save',event:e});assert.notEqual(n.audits[0].id,m.audits[0].id);});
+
+test('기타 note: optional text on any signup, an order may be a note alone, edits keep payment, length is capped',()=>{const s=createDemoState(),member=s.users[0],leader=s.users[1],ev=s.events[0],g=ev.groups.find(x=>x.mode==='order')!,att=ev.groups.find(x=>x.mode==='attendance');
+const base={type:'registration.save' as const,eventId:ev.id,groupId:g.id,attendees:['김은종']};
+const withNote=applyCommand(s,member,{...base,quantities:{[g.menus[0].id]:1},note:'  공기밥 추가, 덜 맵게  '},new Date(0));assert.equal(withNote.registrations[0].note,'공기밥 추가, 덜 맵게');
+const without=applyCommand(s,member,{...base,quantities:{[g.menus[0].id]:1}},new Date(0));assert.equal('note' in without.registrations[0],false);
+assert.throws(()=>applyCommand(s,member,{...base,quantities:{}},new Date(0)),/기타 요청/);
+const noteOnly=applyCommand(s,member,{...base,quantities:{},note:'메뉴에 없는 곱빼기'},new Date(0));assert.equal(noteOnly.registrations[0].items.length,0);assert.equal(noteOnly.registrations[0].note,'메뉴에 없는 곱빼기');
+assert.throws(()=>applyCommand(s,member,{...base,quantities:{[g.menus[0].id]:1},note:'가'.repeat(201)},new Date(0)),/텍스트/);
+assert.equal(applyCommand(s,member,{...base,quantities:{[g.menus[0].id]:1},note:'가'.repeat(200)},new Date(0)).registrations[0].note?.length,200);
+const paid=applyCommand(withNote,leader,{type:'registration.paid',registrationId:withNote.registrations[0].id,paid:true},new Date(0));
+const edited=applyCommand(paid,member,{...base,quantities:{[g.menus[0].id]:1},note:'다른 요청'},new Date(0));assert.equal(edited.registrations[0].note,'다른 요청');assert.equal(edited.registrations[0].paid,true);
+if(att){const a=applyCommand(s,member,{type:'registration.save',eventId:ev.id,groupId:att.id,attendees:['김은종'],quantities:{},note:'유아 의자 1개'},new Date(0));assert.equal(a.registrations[0].note,'유아 의자 1개');}
+});

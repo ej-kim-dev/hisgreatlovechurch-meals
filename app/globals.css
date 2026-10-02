@@ -316,4 +316,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .filter-chip:hover:not([aria-pressed=true]){background:var(--tint);color:var(--ink)}
 .filter-chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 .role-list .empty-state{padding:30px 10px;margin:0}
-/* v36 */
+/* 기타 (free-text request) */
+.note-heading{margin-top:24px}
+.note-input{display:block;width:100%;min-height:88px;padding:12px 14px;border:1px solid var(--field-border);border-radius:var(--radius-btn);background:#fff;color:var(--ink);line-height:1.5;resize:vertical}
+.note-input::placeholder{color:var(--muted)}.note-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.order-note{display:flex;gap:14px;align-items:flex-start;padding:14px 0 4px;border-top:1px dashed #d3d0cb}
+.order-note span{flex:0 0 auto;font-size:13px;font-weight:700;color:var(--muted);padding-top:2px}.order-note p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.reg-note{margin:8px 0 0;padding:9px 12px;background:var(--tint);border-radius:8px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.reg-note strong{margin-right:8px;color:var(--muted);font-size:12px}
+.sheet-notes{margin-top:14px;padding-top:12px;border-top:1px dashed #d3d0cb}.sheet-notes h5{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.sheet-notes p{margin:0 0 6px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.sheet-notes strong{margin-right:8px}
+/* signup row: a long name wraps inside its own space; the × always stays at the right */
+.reg-top{flex-wrap:nowrap;align-items:flex-start}.reg-who{flex:1 1 0;min-width:0;padding-top:6px}.reg-top>.icon-action{flex:0 0 auto}
+/* v38b */
