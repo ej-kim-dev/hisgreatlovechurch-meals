@@ -8,3 +8,5 @@ node_modules
 tests
 docs
 *.log
+AGENTS.md
+CLAUDE.md
