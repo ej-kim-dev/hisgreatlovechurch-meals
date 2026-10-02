@@ -7,7 +7,7 @@ export interface RestaurantTemplate { id: string; name: string; description: str
 export interface RestaurantGroup extends RestaurantTemplate { templateId: string; leaderId: string; mode: SignupMode; payment: Bank; churchPaid?: boolean; }
 export interface LunchEvent { id: string; title: string; date: string; deadline: string; published: boolean; groups: RestaurantGroup[]; archived?: boolean; }
 export interface OrderItem { menuId: string; name: string; price: number; quantity: number; }
-export interface Registration { id: string; eventId: string; userId: string; groupId: string; applicantName: string; attendees: string[]; items: OrderItem[]; paid: boolean; updatedAt: string; }
+export interface Registration { id: string; eventId: string; userId: string; groupId: string; applicantName: string; attendees: string[]; items: OrderItem[]; note?: string; paid: boolean; updatedAt: string; }
 export interface Audit { id: string; actorId: string; action: string; at: string; detail: string; }
 export interface AppState { users: User[]; templates: RestaurantTemplate[]; events: LunchEvent[]; registrations: Registration[]; audits: Audit[]; }
 export interface AppSnapshot extends AppState { user: User | null; demo: boolean; configured: boolean; }
@@ -18,7 +18,7 @@ export type Command =
  | { type: "template.delete"; templateId: string }
  | { type: "event.save"; event: LunchEvent }
  | { type: "event.delete"; eventId: string }
- | { type: "registration.save"; eventId: string; groupId: string; userId?: string; attendees: string[]; quantities: Record<string, number> }
+ | { type: "registration.save"; eventId: string; groupId: string; userId?: string; attendees: string[]; quantities: Record<string, number>; note?: string }
  | { type: "registration.cancel"; eventId: string; userId?: string }
  | { type: "registration.paid"; registrationId: string; paid: boolean }
  | { type: "user.role"; userId: string; role: Role };
