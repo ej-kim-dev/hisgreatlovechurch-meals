@@ -75,3 +75,13 @@ const paid=applyCommand(withNote,leader,{type:'registration.paid',registrationId
 const edited=applyCommand(paid,member,{...base,quantities:{[g.menus[0].id]:1},note:'다른 요청'},new Date(0));assert.equal(edited.registrations[0].note,'다른 요청');assert.equal(edited.registrations[0].paid,true);
 if(att){const a=applyCommand(s,member,{type:'registration.save',eventId:ev.id,groupId:att.id,attendees:['김은종'],quantities:{},note:'유아 의자 1개'},new Date(0));assert.equal(a.registrations[0].note,'유아 의자 1개');}
 });
+
+test('headcount: a signup is just a number of people; old signups with names keep working',()=>{const s=createDemoState(),member=s.users[0],ev=s.events[0],g=ev.groups.find(x=>x.mode==='order')!;
+const base={type:'registration.save' as const,eventId:ev.id,groupId:g.id,quantities:{[g.menus[0].id]:1}};
+const counted=applyCommand(s,member,{...base,headcount:4},new Date(0));const r=counted.registrations[0];assert.equal(r.headcount,4);assert.deepEqual(r.attendees,[member.name]);
+assert.throws(()=>applyCommand(s,member,{...base,headcount:0},new Date(0)),/인원/);assert.throws(()=>applyCommand(s,member,{...base,headcount:31},new Date(0)),/수량|금액/);assert.throws(()=>applyCommand(s,member,{...base,headcount:2.5},new Date(0)),/수량|금액/);
+const legacy=applyCommand(s,member,{...base,attendees:['김은종','박민수']},new Date(0));assert.equal(legacy.registrations[0].headcount,undefined);assert.equal(legacy.registrations[0].attendees.length,2);
+const converted=applyCommand(legacy,member,{...base,headcount:3},new Date(0));assert.equal(converted.registrations[0].headcount,3);assert.equal(converted.registrations.length,1);
+assert.throws(()=>applyCommand(s,member,{...base},new Date(0)),/참석자|텍스트|목록/);
+const other=applyCommand(s,s.users[1],{...base,userId:member.id,headcount:2},new Date(0));assert.equal(other.registrations[0].applicantName,member.name);
+});

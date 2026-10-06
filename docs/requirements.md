@@ -10,9 +10,10 @@ Owner: 김은종. Korean, phone-first Next.js application for church meal signup
 
 **Meals and signups**
 - Any number of meals per date (lunch, dinner, retreat). Each meal has a title, date, cutoff (default 12:15 Asia/Seoul for Sundays, adjustable) and one or more restaurants.
-- One signup per member per meal, for one restaurant. The member names everyone attending (applicant plus companions); people count and meal count are independent. Switching restaurant replaces the old selection atomically.
+- One signup per member per meal, for one restaurant. The member only picks how many people are coming (a head count that includes themselves, 1–30); no names are needed. Older signups that list names keep showing them. People count and meal count are independent. Switching restaurant replaces the old selection atomically.
 - Menus are optional: a restaurant can be attendance-only or attendance plus orders. Quantities per menu item.
-- Staff can correct signups after the cutoff; corrections are audited.
+- After the cutoff a member can still see their signup but cannot change or cancel it (the server refuses; 마이 페이지 shows a 신청 마감 marker instead of the edit and cancel buttons). Staff can correct signups after the cutoff; corrections are audited.
+- 관리 → 현황 can be searched by name and viewed per person (신청자별) or per menu (메뉴별, listing only the people who signed up). Each restaurant stays open or closed as the leader left it, including after a search is cleared.
 - A signup that is marked paid cannot be cancelled; staff untick payment first.
 
 **Restaurants and menus**

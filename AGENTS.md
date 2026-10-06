@@ -41,6 +41,8 @@ Production: project `hisgreatlovechurch-meals`, Cloud Run service `meals` (Seoul
 - **Never delete real data.** Meals are archived (`archived: true`) 7 days after their date once all orders are settled; nothing is removed. Add optional fields instead of migrating or rewriting production data. Do not run scripts that write to production Firestore without asking the owner.
 - **Payments.** A signup marked paid cannot be cancelled. Changing a signup's items or restaurant clears payment; changing only its 기타 note does not. 교회 지원 (`churchPaid`) restaurants have no bank account and no payment tracking.
 - **Menus.** Add / edit / remove menus only in 관리 → 식당. Inside a meal (관리 → 식사) menus can only be shown or hidden. Meals keep a copy of the restaurant, so later edits never rewrite existing orders.
+- **People count.** New signups store `headcount` (a number); older ones store `attendees` names. Always count people with `headcountOf(r)` from `app/components/shared.tsx`, never `attendees.length`. The server still accepts the old `attendees` list.
+- **Closed meals.** After the deadline members can see but not change their signup (enforced in `lib/domain.ts`); only leaders can.
 - **Same-origin writes** and server-side validation stay in place. Photos are served only to signed-in users.
 
 ## UI conventions (the owner's decisions)

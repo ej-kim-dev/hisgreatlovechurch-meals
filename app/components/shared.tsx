@@ -1,10 +1,14 @@
 "use client";
 import { useState } from "react";
-import type { Command, AppSnapshot, RestaurantTemplate } from "@/lib/types";
+import type { Command, AppSnapshot, Registration, RestaurantTemplate } from "@/lib/types";
 
 export type RunCommand = (command: Command) => Promise<boolean>;
 export type SnapshotSetter = (snapshot: AppSnapshot) => void;
 export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+/** People on a signup: new signups store a head count; older ones list names. */
+export const headcountOf = (r: Registration) => r.headcount ?? r.attendees.length;
+/** "김은종: 3명" for new signups, "김은종 (김은종, 박민수): 2명" for older ones that list names. */
+export const whoLabel = (r: Registration) => `${r.applicantName}${r.headcount === undefined ? ` (${r.attendees.join(", ")})` : ""}: ${headcountOf(r)}명`;
 export const roleName = { viewer: "교인", editor: "리더", admin: "관리자" };
 export const dateLabel = (date: string) => new Date(`${date}T12:00:00+09:00`).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long", timeZone: "Asia/Seoul" });
 export const clockLabel = (date: string) => new Date(date).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Seoul" });

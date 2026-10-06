@@ -53,14 +53,15 @@ export function applyCommand(state: AppState, actor: User, command: Command, now
       const previous = next.registrations.find(r => r.eventId === eventId && r.userId === userId);
       if (type === 'registration.cancel') { if (previous?.paid) fail('입금이 확인된 신청은 취소할 수 없습니다. 입금 확인을 먼저 해제해 주세요.'); next.registrations = next.registrations.filter(r => !(r.eventId === eventId && r.userId === userId)); break; }
       const groupId = id(input.groupId), group = lunch.groups.find(g => g.id === groupId); if (!group) return fail('식당을 찾을 수 없습니다.');
-      const attendees = list(input.attendees,30,v => text(v,50)); if (!attendees.length) fail('참석자를 한 명 이상 입력해 주세요.');
+      const hasCount = input.headcount !== undefined && input.headcount !== null, headcount = hasCount ? integer(input.headcount, 30) : 0; if (hasCount && headcount < 1) fail('인원을 한 명 이상으로 선택해 주세요.');
+      const attendees = hasCount ? [owner.name] : list(input.attendees,30,v => text(v,50)); if (!attendees.length) fail('참석자를 한 명 이상 입력해 주세요.');
       const quantities = record(input.quantities); if (Object.keys(quantities).length > 100) fail('메뉴가 너무 많습니다.');
       const items = Object.entries(quantities).map(([menuId,v]) => { id(menuId); const quantity = integer(v,100), oldItem = previous?.groupId === groupId ? previous.items.find(i => i.menuId === menuId) : undefined, selected = group.menus.find(m => m.id === menuId); if (!selected && !oldItem) return fail('메뉴를 찾을 수 없습니다.'); if (quantity && !selected?.available && (!oldItem || quantity > oldItem.quantity)) fail('선택할 수 없는 메뉴입니다.'); return { menuId, name: oldItem?.name ?? selected!.name, price: oldItem?.price ?? selected!.price, quantity }; }).filter(i => i.quantity > 0).sort((a,b) => a.menuId.localeCompare(b.menuId));
       const note = input.note === undefined || input.note === null ? '' : text(input.note, 200, true);
       if (group.mode === 'attendance' && items.length) fail('참석 신청에는 메뉴를 추가할 수 없습니다.'); if (group.mode === 'order' && !items.length && !note) fail('메뉴를 고르거나 기타 요청을 적어 주세요.');
       const unchanged = previous?.groupId === groupId && JSON.stringify([...previous.items].sort((a,b) => a.menuId.localeCompare(b.menuId))) === JSON.stringify(items);
       next.registrations = next.registrations.filter(r => !(r.eventId === eventId && r.userId === userId));
-      next.registrations.push({ id: previous?.id ?? `reg_${eventId.length}_${eventId}_${userId}`, eventId, userId, groupId, applicantName: owner.name, attendees, items, ...(note ? { note } : {}), paid: Boolean(unchanged && previous?.paid), updatedAt: at }); break;
+      next.registrations.push({ id: previous?.id ?? `reg_${eventId.length}_${eventId}_${userId}`, eventId, userId, groupId, applicantName: owner.name, attendees, ...(hasCount ? { headcount } : {}), items, ...(note ? { note } : {}), paid: Boolean(unchanged && previous?.paid), updatedAt: at }); break;
     }
     case 'registration.paid': { requireStaff(); const registrationId = id(input.registrationId), paid = bool(input.paid), r = next.registrations.find(r => r.id === registrationId); if (!r) return fail('신청을 찾을 수 없습니다.'); if (next.events.find(e => e.id === r.eventId)?.groups.find(g => g.id === r.groupId)?.churchPaid) fail('교회 지원 식사는 입금 확인이 필요 없습니다.'); r.paid = paid; r.updatedAt = at; break; }
     case 'user.role': {
