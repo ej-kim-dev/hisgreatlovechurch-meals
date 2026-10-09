@@ -1,15 +1,15 @@
-# 그 사랑교회 Meals
+# Meals — church meal sign-up app (그 사랑교회 Meals)
 
-A Korean, phone-first website for church meal signups: Sunday lunches, retreat dinners, or any other gathering. Members sign in with Kakao, pick a restaurant for each meal, list everyone who is coming, and optionally order menu items. Leaders prepare meals and restaurants, correct signups, and confirm payments. Admins manage roles. Bank transfers happen outside the site; leaders tick them off once received.
+A phone-first web app where church members sign up for shared meals and order menus, and leaders manage restaurants, order sheets and payments. Built with Next.js and TypeScript on Google Cloud Run, with Firestore, Cloud Storage and Firebase Auth; members sign in with Kakao. In use at the church since late September 2026, with 30+ members signed in. The interface is in Korean.
 
-Live site: <https://hisgreatlovechurch-meals.web.app>
+**Live site:** https://hisgreatlovechurch-meals.web.app
 
 ## What it does
 
-- **신청** — members choose a date and a restaurant, name everyone attending, and order menus. They can edit or cancel until the cutoff (a signup that is already marked paid cannot be cancelled).
+- **신청** — members choose a date and a restaurant, say how many people are coming, and order menus. They can edit or cancel until the cutoff (a signup that is already marked paid cannot be cancelled).
 - **마이 페이지** — the member's own signup, order sheet and payment instructions (tap the account number to copy it). Meals paid by the church show 교회 지원 instead.
 - **관리** (leaders and admins):
-  - **현황** — signups per restaurant with an order sheet; tick 입금 when a transfer arrives; tap a signup to correct it.
+  - **현황** — signups per restaurant, by person or by menu, with an order sheet; tick 입금 when a transfer arrives; tap a signup to correct it.
   - **식사** — create meals (several per day are fine), choose restaurants, leader, bank account or 교회 지원, and show or hide individual menus for that meal.
   - **식당** — saved restaurants with photo, store link and menus. Menus are added, edited and removed here only.
   - **아카이브** — finished meals by date range and restaurant, with totals.
@@ -18,7 +18,7 @@ Live site: <https://hisgreatlovechurch-meals.web.app>
 
 ## Local preview
 
-Requires Node.js 22 or newer. The local preview uses fictional people, restaurants and bank details; it does not touch the church database.
+Requires Node.js 22 or newer. The local preview uses sample people, restaurants and bank details; it does not touch the church database.
 
 ```bash
 npm ci
@@ -39,10 +39,14 @@ Tests use Node's built-in runner and cover authorization, cutoffs, validation, p
 
 ## How it is hosted
 
-```
-visitor → Firebase Hosting (hisgreatlovechurch-meals.web.app)
-        → Cloud Run service "meals" (asia-northeast3, runs this code)
-        → Firestore (data) · Cloud Storage (photos) · Firebase Auth (sessions) · Kakao (login)
+```mermaid
+flowchart LR
+  V[Visitor] --> H[Firebase Hosting]
+  H --> R["Cloud Run: meals service, Seoul"]
+  R --> F[("Firestore")]
+  R --> S[("Cloud Storage: photos")]
+  R --> A["Firebase Auth: sessions"]
+  R <--> K["Kakao login"]
 ```
 
 See the [deployment guide](docs/deploy.md) for setup, redeploying and troubleshooting, and [requirements](docs/requirements.md) for the agreed behavior.
@@ -55,6 +59,15 @@ See the [deployment guide](docs/deploy.md) for setup, redeploying and troublesho
 - `lib/auth.ts` — Kakao → Firebase session flow (cookie `__session`, the only cookie Firebase Hosting forwards).
 - `firestore.rules` — denies all direct browser access; only the server (Admin SDK) reads and writes.
 - `firebase.json`, `hosting/` — Hosting configuration that forwards every request to Cloud Run.
+
+## Design decisions
+
+- **All data access goes through the server.** Firestore rules deny every direct browser read and write. Only Cloud Run touches the database, and every change is a validated command with role checks in `lib/domain.ts`, so permissions are enforced in one place.
+- **Sessions use the `__session` cookie.** Firebase Hosting forwards only that cookie to Cloud Run, so the Kakao-to-Firebase login flow is built around it.
+- **Minimal personal data.** Kakao login yields only an app-scoped user ID, with no email or phone number; the only personal data is the display name members type in.
+- **Orders keep a price snapshot.** Editing a restaurant or menu never rewrites names and prices on orders already placed.
+- **Nothing is deleted.** Settled meals move to an archive after 7 days.
+- **Demo mode can't run in production.** It's refused on Cloud Run and in production builds.
 
 ## Security and privacy
 
