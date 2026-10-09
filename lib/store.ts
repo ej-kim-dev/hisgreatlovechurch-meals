@@ -15,7 +15,7 @@ function demoState(): AppState {
   [["2026-08-16", "주일 점심", false], ["2026-08-30", "수련회 저녁", true], ["2026-09-13", "주일 점심", false]].forEach(([date, title, church], i) => {
     const id = `past-${i}`;
     state.events.push({ ...structuredClone(base), id, title: title as string, date: date as string, deadline: `${date}T03:15:00.000Z`, archived: true, groups: [{ ...structuredClone(order), id: `${id}-g`, churchPaid: church as boolean }] });
-    state.registrations.push({ id: `${id}-r1`, eventId: id, userId: "demo-member", groupId: `${id}-g`, applicantName: "김은종", attendees: ["김은종", "김현아"], items: [{ menuId: order.menus[0].id, name: order.menus[0].name, price: order.menus[0].price, quantity: 2 }], paid: !church, updatedAt: `${date}T03:00:00.000Z` });
+    state.registrations.push({ id: `${id}-r1`, eventId: id, userId: "demo-member", groupId: `${id}-g`, applicantName: "김은종", attendees: ["김은종", "박민수"], items: [{ menuId: order.menus[0].id, name: order.menus[0].name, price: order.menus[0].price, quantity: 2 }], paid: !church, updatedAt: `${date}T03:00:00.000Z` });
   });
   return globalStore.sundayDemoState = state;
 }
