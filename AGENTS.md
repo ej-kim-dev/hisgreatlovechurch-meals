@@ -59,4 +59,5 @@ Production: project `hisgreatlovechurch-meals`, Cloud Run service `meals` (Seoul
 - If a CSS change does not appear in the dev server, change the trailing version comment at the end of `app/globals.css` (e.g. `/* v38 */` → `/* v38b */`) and hard-reload.
 - Firestore queries are limited to 2,000 documents per list (`LIMIT` in `lib/store.ts`); day-to-day screens load only unarchived meals.
 - Kakao caches link previews per URL; after changing the preview image or title, re-scrape it in Kakao's sharing debugger.
+- **Commit identity.** Always commit as `ej-kim-dev <kimeunjohng@gmail.com>` (set in the global git config). Never use the old school email; if unsure, run `git var GIT_AUTHOR_IDENT` before committing.
 - Commit messages: short imperative summary plus a few lines of detail. Work directly on `main` (solo project); push after committing.
