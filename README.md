@@ -1,5 +1,7 @@
 # Meals — church meal sign-up app (그 사랑교회 Meals)
 
+[![CI](https://github.com/ej-kim-dev/hisgreatlovechurch-meals/actions/workflows/ci.yml/badge.svg)](https://github.com/ej-kim-dev/hisgreatlovechurch-meals/actions/workflows/ci.yml)
+
 A phone-first web app where church members sign up for shared meals and order menus, and leaders manage restaurants, order sheets and payments. Built with Next.js and TypeScript on Google Cloud Run, with Firestore, Cloud Storage and Firebase Auth; members sign in with Kakao. In use at the church since late September 2026, with 30+ members signed in. The interface is in Korean.
 
 **Live site:** https://hisgreatlovechurch-meals.web.app
